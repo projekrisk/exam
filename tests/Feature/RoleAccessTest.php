@@ -96,4 +96,32 @@ class RoleAccessTest extends TestCase
         $this->assertNull(User::find($panitia->id));
         $this->assertNull(User::find($guru->id));
     }
+
+    public function test_guru_can_create_separate_question_banks_per_target_class_group_for_same_subject(): void
+    {
+        $guru = User::factory()->create(['username' => 'guru_sosio', 'role' => 'guru']);
+        $subject = \App\Models\Subject::create(['code' => 'SOS', 'name' => 'Sosiologi']);
+
+        foreach (['X-E1', 'X-E2', 'X-E3', 'XII-F3', 'XII-F4', 'XII-F5'] as $kelas) {
+            $guru->subjects()->attach($subject->id, ['kelas' => $kelas]);
+        }
+
+        $this->actingAs($guru)->post('/bank-soal', [
+            'subject_id' => $subject->id,
+            'title' => 'Sosiologi Kelas X',
+            'target_classes' => ['X-E1', 'X-E2', 'X-E3'],
+        ])->assertRedirect();
+
+        $this->actingAs($guru)->post('/bank-soal', [
+            'subject_id' => $subject->id,
+            'title' => 'Sosiologi Kelas XII',
+            'target_classes' => ['XII-F3', 'XII-F4', 'XII-F5'],
+        ])->assertRedirect();
+
+        $bankX = \App\Models\QuestionBank::where('title', 'Sosiologi Kelas X')->firstOrFail();
+        $bankXII = \App\Models\QuestionBank::where('title', 'Sosiologi Kelas XII')->firstOrFail();
+
+        $this->assertSame(['X-E1', 'X-E2', 'X-E3'], $bankX->target_classes);
+        $this->assertSame(['XII-F3', 'XII-F4', 'XII-F5'], $bankXII->target_classes);
+    }
 }

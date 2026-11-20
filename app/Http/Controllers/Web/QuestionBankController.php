@@ -96,7 +96,9 @@ class QuestionBankController extends Controller
 
         $targetClasses = $validated['target_classes'] ?? [];
         if ($user->isGuru()) {
-            $targetClasses = $user->assignedClassesForSubject((int) $validated['subject_id']);
+            $allowedClasses = $user->assignedClassesForSubject((int) $validated['subject_id']);
+            $selected = array_values(array_intersect($targetClasses, $allowedClasses));
+            $targetClasses = ! empty($selected) ? $selected : $allowedClasses;
         }
 
         $bank = QuestionBank::create([
@@ -127,7 +129,9 @@ class QuestionBankController extends Controller
 
         $targetClasses = $validated['target_classes'] ?? [];
         if ($user->isGuru()) {
-            $targetClasses = $user->assignedClassesForSubject((int) $validated['subject_id']);
+            $allowedClasses = $user->assignedClassesForSubject((int) $validated['subject_id']);
+            $selected = array_values(array_intersect($targetClasses, $allowedClasses));
+            $targetClasses = ! empty($selected) ? $selected : $allowedClasses;
         }
 
         $questionBank->update([
