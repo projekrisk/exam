@@ -99,23 +99,33 @@ class RoleAccessTest extends TestCase
 
     public function test_guru_can_create_separate_question_banks_per_target_class_group_for_same_subject(): void
     {
+        $superAdmin = User::factory()->create(['username' => 'superadmin_map', 'role' => 'super_admin']);
         $guru = User::factory()->create(['username' => 'guru_sosio', 'role' => 'guru']);
         $subject = \App\Models\Subject::create(['code' => 'SOS', 'name' => 'Sosiologi']);
 
-        foreach (['X-E1', 'X-E2', 'X-E3', 'XII-F3', 'XII-F4', 'XII-F5'] as $kelas) {
-            $guru->subjects()->attach($subject->id, ['kelas' => $kelas]);
-        }
+        $this->actingAs($superAdmin)->put("/guru/{$guru->id}", [
+            'nip' => $guru->username,
+            'name' => $guru->name,
+            'role' => 'guru',
+            'bindings' => [
+                ['subject_id' => $subject->id, 'classes' => ['X-E1', 'X-E2', 'X-E3']],
+                ['subject_id' => $subject->id, 'classes' => ['XII-F3', 'XII-F4', 'XII-F5']],
+            ],
+        ])->assertRedirect();
+
+        $groups = $guru->fresh()->subjectBindingGroups();
+        $this->assertCount(2, $groups);
 
         $this->actingAs($guru)->post('/bank-soal', [
             'subject_id' => $subject->id,
+            'binding_key' => $groups[0]['key'],
             'title' => 'Sosiologi Kelas X',
-            'target_classes' => ['X-E1', 'X-E2', 'X-E3'],
         ])->assertRedirect();
 
         $this->actingAs($guru)->post('/bank-soal', [
             'subject_id' => $subject->id,
+            'binding_key' => $groups[1]['key'],
             'title' => 'Sosiologi Kelas XII',
-            'target_classes' => ['XII-F3', 'XII-F4', 'XII-F5'],
         ])->assertRedirect();
 
         $bankX = \App\Models\QuestionBank::where('title', 'Sosiologi Kelas X')->firstOrFail();

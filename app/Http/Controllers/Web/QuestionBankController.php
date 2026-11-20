@@ -79,7 +79,9 @@ class QuestionBankController extends Controller
             }
         }
 
-        return view('question_banks.index', compact('banks', 'subjects', 'classes', 'subjectClassesMap', 'search', 'status'));
+        $guruBindings = $user->isGuru() ? $user->subjectBindingGroups() : [];
+
+        return view('question_banks.index', compact('banks', 'subjects', 'classes', 'subjectClassesMap', 'guruBindings', 'search', 'status'));
     }
 
     public function store(Request $request): RedirectResponse
@@ -88,21 +90,31 @@ class QuestionBankController extends Controller
 
         $validated = $request->validate([
             'subject_id' => ['required', 'exists:subjects,id'],
+            'binding_key' => ['nullable', 'string', 'max:40'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'target_classes' => ['nullable', 'array'],
             'target_classes.*' => ['string', 'max:64'],
         ]);
 
+        $subjectId = (int) $validated['subject_id'];
         $targetClasses = $validated['target_classes'] ?? [];
         if ($user->isGuru()) {
-            $allowedClasses = $user->assignedClassesForSubject((int) $validated['subject_id']);
-            $selected = array_values(array_intersect($targetClasses, $allowedClasses));
-            $targetClasses = ! empty($selected) ? $selected : $allowedClasses;
+            $matchedGroup = ! empty($validated['binding_key'])
+                ? collect($user->subjectBindingGroups())->firstWhere('key', $validated['binding_key'])
+                : null;
+            if ($matchedGroup) {
+                $subjectId = (int) $matchedGroup['subject_id'];
+                $targetClasses = $matchedGroup['classes'];
+            } else {
+                $allowedClasses = $user->assignedClassesForSubject($subjectId);
+                $selected = array_values(array_intersect($targetClasses, $allowedClasses));
+                $targetClasses = ! empty($selected) ? $selected : $allowedClasses;
+            }
         }
 
         $bank = QuestionBank::create([
-            'subject_id' => $validated['subject_id'],
+            'subject_id' => $subjectId,
             'teacher_id' => $user->id,
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
@@ -121,21 +133,31 @@ class QuestionBankController extends Controller
 
         $validated = $request->validate([
             'subject_id' => ['required', 'exists:subjects,id'],
+            'binding_key' => ['nullable', 'string', 'max:40'],
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
             'target_classes' => ['nullable', 'array'],
             'target_classes.*' => ['string', 'max:64'],
         ]);
 
+        $subjectId = (int) $validated['subject_id'];
         $targetClasses = $validated['target_classes'] ?? [];
         if ($user->isGuru()) {
-            $allowedClasses = $user->assignedClassesForSubject((int) $validated['subject_id']);
-            $selected = array_values(array_intersect($targetClasses, $allowedClasses));
-            $targetClasses = ! empty($selected) ? $selected : $allowedClasses;
+            $matchedGroup = ! empty($validated['binding_key'])
+                ? collect($user->subjectBindingGroups())->firstWhere('key', $validated['binding_key'])
+                : null;
+            if ($matchedGroup) {
+                $subjectId = (int) $matchedGroup['subject_id'];
+                $targetClasses = $matchedGroup['classes'];
+            } else {
+                $allowedClasses = $user->assignedClassesForSubject($subjectId);
+                $selected = array_values(array_intersect($targetClasses, $allowedClasses));
+                $targetClasses = ! empty($selected) ? $selected : $allowedClasses;
+            }
         }
 
         $questionBank->update([
-            'subject_id' => $validated['subject_id'],
+            'subject_id' => $subjectId,
             'title' => $validated['title'],
             'description' => $validated['description'] ?? null,
             'target_classes' => empty($targetClasses) ? ['ALL'] : $targetClasses,

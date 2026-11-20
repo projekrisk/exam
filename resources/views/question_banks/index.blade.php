@@ -169,48 +169,59 @@
       <div>
         <label class="block text-sm font-medium mb-1">Mata Pelajaran</label>
         <input type="hidden" name="subject_id" id="bank-subject-id" required>
+        <input type="hidden" name="binding_key" id="bank-binding-key">
         <div id="bank-subject-tag" class="flex flex-wrap gap-1.5 mb-1.5"></div>
         <div id="search-bank-subject-wrap" class="relative">
           <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-notion-gray pointer-events-none"></i>
           <input type="text" id="search-bank-subject" oninput="filterSearchPicker('search-bank-subject', 'bank-subject-list')" placeholder="Ketik untuk mencari mata pelajaran..." class="w-full border border-notion-border rounded-md pl-9 pr-3 py-2 text-sm bg-white">
         </div>
         <div id="bank-subject-list" class="hidden mt-1.5 max-h-36 overflow-y-auto border border-notion-border rounded-md p-1.5 space-y-0.5 bg-white shadow-sm">
-          @forelse($subjects as $sub)
-            <button type="button" onclick="selectBankSubject('{{ $sub->id }}', '{{ addslashes($sub->name) }}')" class="w-full text-left px-2.5 py-1.5 rounded text-sm hover:bg-notion-hover text-notion-text filter-item" data-label="{{ strtolower($sub->name) }}">
-              {{ $sub->name }}
-            </button>
-          @empty
-            <p class="p-2 text-sm text-notion-gray">Belum ada mata pelajaran.</p>
-          @endforelse
+          @if(auth()->user()->isGuru())
+            @forelse($guruBindings as $gb)
+              @php
+                $gbLabel = $gb['subject_name'] . (!empty($gb['classes']) ? ' (' . implode(', ', $gb['classes']) . ')' : '');
+              @endphp
+              <button type="button" onclick='selectGuruBinding(@json($gb), @json($gbLabel))' class="w-full text-left px-2.5 py-1.5 rounded text-sm hover:bg-notion-hover text-notion-text filter-item" data-label="{{ strtolower($gbLabel) }}">
+                {{ $gbLabel }}
+              </button>
+            @empty
+              <p class="p-2 text-sm text-notion-gray">Belum ada mapping mata pelajaran.</p>
+            @endforelse
+          @else
+            @forelse($subjects as $sub)
+              <button type="button" onclick="selectBankSubject('{{ $sub->id }}', '{{ addslashes($sub->name) }}')" class="w-full text-left px-2.5 py-1.5 rounded text-sm hover:bg-notion-hover text-notion-text filter-item" data-label="{{ strtolower($sub->name) }}">
+                {{ $sub->name }}
+              </button>
+            @empty
+              <p class="p-2 text-sm text-notion-gray">Belum ada mata pelajaran.</p>
+            @endforelse
+          @endif
         </div>
       </div>
 
       <div>
-        <div class="flex items-center justify-between mb-1">
-          <label class="block text-sm font-medium">Target Kelas</label>
-          <button type="button" onclick="toggleAllBankClasses()" class="text-xs text-notion-blue hover:underline font-medium">Pilih / Kosongkan Semua</button>
-        </div>
+        <label class="block text-sm font-medium mb-1">Target Kelas {{ auth()->user()->isGuru() ? '(Otomatis sesuai mapping)' : '' }}</label>
         <div id="bank-class-tags" class="flex flex-wrap gap-1.5 mb-1.5">
           @if(auth()->user()->isGuru())
-            <span class="text-sm text-notion-gray">Pilih mata pelajaran untuk memilih kelas target.</span>
+            <span class="text-sm text-notion-gray">Pilih mata pelajaran untuk menampilkan kelas target.</span>
           @endif
         </div>
-        <div class="relative {{ auth()->user()->isGuru() ? 'hidden' : '' }}" id="search-bank-class-wrap">
+        @if(!auth()->user()->isGuru())
+        <div class="relative">
           <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-notion-gray pointer-events-none"></i>
           <input type="text" id="search-bank-class" oninput="filterSearchPicker('search-bank-class', 'bank-class-list')" placeholder="Ketik untuk mencari kelas (misal: X-E1)..." class="w-full border border-notion-border rounded-md pl-9 pr-3 py-2 text-sm bg-white">
         </div>
         <div id="bank-class-list" class="hidden mt-1.5 max-h-36 overflow-y-auto border border-notion-border rounded-md p-1.5 grid grid-cols-2 gap-1 bg-white shadow-sm">
-          @if(!auth()->user()->isGuru())
-            @forelse($classes as $c)
-            <label class="flex items-center gap-2 px-2 py-1.5 rounded text-sm cursor-pointer hover:bg-notion-hover filter-item" data-label="{{ strtolower($c) }}">
-              <input type="checkbox" name="target_classes[]" value="{{ $c }}" onchange="syncPickerTags('bank-class-list', 'bank-class-tags', 'search-bank-class', this.checked)" class="rounded border-notion-border">
-              <span>{{ $c }}</span>
-            </label>
-            @empty
-            <p class="col-span-2 p-2 text-sm text-notion-gray">Belum ada binding kelas. Hubungi Panitia.</p>
-            @endforelse
-          @endif
+          @forelse($classes as $c)
+          <label class="flex items-center gap-2 px-2 py-1.5 rounded text-sm cursor-pointer hover:bg-notion-hover filter-item" data-label="{{ strtolower($c) }}">
+            <input type="checkbox" name="target_classes[]" value="{{ $c }}" onchange="syncPickerTags('bank-class-list', 'bank-class-tags', 'search-bank-class', this.checked)" class="rounded border-notion-border">
+            <span>{{ $c }}</span>
+          </label>
+          @empty
+          <p class="col-span-2 p-2 text-sm text-notion-gray">Belum ada binding kelas. Hubungi Panitia.</p>
+          @endforelse
         </div>
+        @endif
       </div>
       <div>
         <label class="block text-sm font-medium mb-1">Judul Paket Soal</label>
@@ -233,66 +244,44 @@
 <script>
   const STORE_BANK_URL = @json(route('question-banks.store'));
   const IS_GURU = @json(auth()->user()->isGuru());
-  const SUBJECT_CLASSES_MAP = @json($subjectClassesMap ?? []);
-  const GURU_SUBJECTS = @json($subjects->map(fn ($s) => ['id' => $s->id, 'name' => $s->name])->values());
+  const GURU_BINDINGS = @json($guruBindings ?? []);
 
-  function renderGuruClassCheckboxes(classes, selected = []) {
-    const listEl = document.getElementById('bank-class-list');
-    const searchWrap = document.getElementById('search-bank-class-wrap');
+  function renderReadOnlyBankClasses(classes) {
     const tagsEl = document.getElementById('bank-class-tags');
-    if (!listEl || !tagsEl) return;
-
+    if (!tagsEl) return;
     if (!classes || classes.length === 0) {
-      searchWrap?.classList.add('hidden');
-      listEl.classList.add('hidden');
-      listEl.innerHTML = '';
       tagsEl.innerHTML = '<span class="text-sm text-notion-gray">Belum ada kelas ter-binding untuk mapel ini.</span>';
       return;
     }
-
-    searchWrap?.classList.remove('hidden');
-    listEl.classList.remove('hidden');
-    listEl.innerHTML = classes.map(c => {
-      const checked = selected.includes(c) ? 'checked' : '';
-      return `<label class="flex items-center gap-2 px-2 py-1.5 rounded text-sm cursor-pointer hover:bg-notion-hover filter-item" data-label="${c.toLowerCase()}">
-        <input type="checkbox" name="target_classes[]" value="${c}" ${checked} onchange="syncPickerTags('bank-class-list', 'bank-class-tags', 'search-bank-class', this.checked)" class="rounded border-notion-border">
-        <span>${c}</span>
-      </label>`;
-    }).join('');
-    syncPickerTags('bank-class-list', 'bank-class-tags');
+    tagsEl.innerHTML = classes.map(c =>
+      `<span class="inline-flex items-center px-2.5 py-1 rounded-md bg-notion-sidebar border border-notion-border text-sm text-notion-text font-medium">${c}</span>`
+    ).join('');
   }
 
-  function toggleAllBankClasses() {
-    const checkboxes = document.querySelectorAll('#bank-class-list input[type="checkbox"]');
-    if (!checkboxes.length) return;
-    const allChecked = Array.from(checkboxes).every(cb => cb.checked);
-    checkboxes.forEach(cb => { cb.checked = !allChecked; });
-    syncPickerTags('bank-class-list', 'bank-class-tags');
+  function selectGuruBinding(gb, label) {
+    selectSinglePicker('bank-subject-id', 'search-bank-subject', 'bank-subject-list', 'bank-subject-tag', String(gb.subject_id), label, 'search-bank-subject-wrap');
+    document.getElementById('bank-binding-key').value = gb.key || '';
+    renderReadOnlyBankClasses(gb.classes || []);
   }
 
   function selectBankSubject(subjectId, subjectName) {
     selectSinglePicker('bank-subject-id', 'search-bank-subject', 'bank-subject-list', 'bank-subject-tag', subjectId, subjectName, 'search-bank-subject-wrap');
-
-    if (IS_GURU) {
-      const bound = SUBJECT_CLASSES_MAP[subjectId] || [];
-      renderGuruClassCheckboxes(bound, []);
-    }
+    document.getElementById('bank-binding-key').value = '';
   }
 
   function resetBankForm() {
     document.getElementById('bank-form').action = STORE_BANK_URL;
     document.getElementById('bank-method').value = 'POST';
     clearSinglePicker('bank-subject-id', 'bank-subject-tag', 'search-bank-subject-wrap');
+    document.getElementById('bank-binding-key').value = '';
     document.getElementById('search-bank-subject').value = '';
     document.getElementById('bank-subject-list').classList.add('hidden');
-    document.getElementById('search-bank-class').value = '';
-    document.getElementById('bank-class-list').classList.add('hidden');
 
     if (IS_GURU) {
-      document.getElementById('search-bank-class-wrap')?.classList.add('hidden');
-      document.getElementById('bank-class-list').innerHTML = '';
-      document.getElementById('bank-class-tags').innerHTML = '<span class="text-sm text-notion-gray">Pilih mata pelajaran untuk memilih kelas target.</span>';
+      document.getElementById('bank-class-tags').innerHTML = '<span class="text-sm text-notion-gray">Pilih mata pelajaran untuk menampilkan kelas target.</span>';
     } else {
+      document.getElementById('search-bank-class').value = '';
+      document.getElementById('bank-class-list').classList.add('hidden');
       document.querySelectorAll('#bank-class-list input[type="checkbox"]').forEach(cb => cb.checked = false);
       syncPickerTags('bank-class-list', 'bank-class-tags');
     }
@@ -305,8 +294,10 @@
     resetBankForm();
     document.getElementById('modal-bank-title').textContent = 'Buat Bank Soal Baru';
     document.getElementById('bank-submit-btn').textContent = 'Buat & Isi Soal';
-    if (IS_GURU && GURU_SUBJECTS.length === 1) {
-      selectBankSubject(String(GURU_SUBJECTS[0].id), GURU_SUBJECTS[0].name);
+    if (IS_GURU && GURU_BINDINGS.length === 1) {
+      const gb = GURU_BINDINGS[0];
+      const lbl = gb.subject_name + (gb.classes?.length ? ` (${gb.classes.join(', ')})` : '');
+      selectGuruBinding(gb, lbl);
     }
     openAppModal('modal-add-bank');
   }
@@ -318,15 +309,23 @@
     document.getElementById('modal-bank-title').textContent = 'Edit Bank Soal';
     document.getElementById('bank-submit-btn').textContent = 'Simpan Perubahan';
 
-    if (bank.subject_id) {
-      selectSinglePicker('bank-subject-id', 'search-bank-subject', 'bank-subject-list', 'bank-subject-tag', bank.subject_id, bank.subject_name, 'search-bank-subject-wrap');
-    }
-
     const targets = bank.target_classes || [];
     if (IS_GURU) {
-      const bound = SUBJECT_CLASSES_MAP[bank.subject_id] || targets;
-      renderGuruClassCheckboxes(bound, targets);
+      const matched = GURU_BINDINGS.find(gb =>
+        String(gb.subject_id) === String(bank.subject_id) &&
+        JSON.stringify([...(gb.classes || [])].sort()) === JSON.stringify([...targets].sort())
+      ) || GURU_BINDINGS.find(gb => String(gb.subject_id) === String(bank.subject_id));
+      if (matched) {
+        const lbl = matched.subject_name + (matched.classes?.length ? ` (${matched.classes.join(', ')})` : '');
+        selectGuruBinding(matched, lbl);
+      } else if (bank.subject_id) {
+        selectBankSubject(bank.subject_id, bank.subject_name);
+        renderReadOnlyBankClasses(targets);
+      }
     } else {
+      if (bank.subject_id) {
+        selectSinglePicker('bank-subject-id', 'search-bank-subject', 'bank-subject-list', 'bank-subject-tag', bank.subject_id, bank.subject_name, 'search-bank-subject-wrap');
+      }
       document.querySelectorAll('#bank-class-list input[type="checkbox"]').forEach(cb => {
         cb.checked = targets.includes(cb.value);
       });

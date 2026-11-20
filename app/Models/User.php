@@ -32,7 +32,34 @@ class User extends Authenticatable
 
     public function subjects(): BelongsToMany
     {
-        return $this->belongsToMany(Subject::class, 'subject_user')->withPivot('kelas');
+        return $this->belongsToMany(Subject::class, 'subject_user')->withPivot(['kelas', 'group_key']);
+    }
+
+    public function subjectBindingGroups(): array
+    {
+        return $this->subjects()
+            ->get()
+            ->groupBy(fn ($s) => $s->id . ':' . ($s->pivot->group_key ?? 1))
+            ->map(function ($rows) {
+                $first = $rows->first();
+                $classes = $rows->pluck('pivot.kelas')
+                    ->filter()
+                    ->unique()
+                    ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+                    ->values()
+                    ->all();
+
+                return [
+                    'key' => $first->id . ':' . ($first->pivot->group_key ?? 1),
+                    'subject_id' => (int) $first->id,
+                    'subject_name' => $first->name,
+                    'group_key' => (int) ($first->pivot->group_key ?? 1),
+                    'classes' => $classes,
+                ];
+            })
+            ->sortBy('subject_name')
+            ->values()
+            ->all();
     }
 
     public function assignedClassesForSubject(int $subjectId): array

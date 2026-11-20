@@ -89,18 +89,21 @@ class TeacherController extends Controller
         DB::table('subject_user')->where('user_id', $user->id)->delete();
 
         $rows = [];
+        $groupNo = 0;
         foreach ($bindings as $b) {
             $subjectId = (int) ($b['subject_id'] ?? 0);
             if ($subjectId <= 0) {
                 continue;
             }
+            $groupNo++;
             $classes = empty($b['classes']) ? [null] : array_values(array_unique($b['classes']));
             foreach ($classes as $kelas) {
-                $key = $subjectId . '|' . ($kelas ?? '');
+                $key = $subjectId . '|' . $groupNo . '|' . ($kelas ?? '');
                 $rows[$key] = [
                     'subject_id' => $subjectId,
                     'user_id' => $user->id,
                     'kelas' => $kelas,
+                    'group_key' => $groupNo,
                 ];
             }
         }

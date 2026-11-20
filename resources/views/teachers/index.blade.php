@@ -42,12 +42,12 @@
       <tbody class="divide-y divide-notion-border">
         @forelse($teachers as $t)
         @php
-          $groupedBySub = $t->subjects->groupBy('id');
-          $bindingsPayload = $groupedBySub->map(function ($rows, $subId) {
+          $groupedBySub = $t->subjects->groupBy(fn ($s) => $s->id . ':' . ($s->pivot->group_key ?? 1));
+          $bindingsPayload = $groupedBySub->map(function ($rows) {
             $first = $rows->first();
             $cls = $rows->pluck('pivot.kelas')->filter()->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all();
             return [
-              'subject_id' => (string) $subId,
+              'subject_id' => (string) $first->id,
               'subject_name' => $first->name,
               'classes' => $cls,
             ];
@@ -69,7 +69,9 @@
           <td class="py-3 px-4">
             <div class="flex flex-wrap gap-1.5">
               @forelse($bindingsPayload as $bp)
-                <span class="px-2.5 py-0.5 rounded text-sm bg-notion-sidebar border border-notion-border">{{ $bp['subject_name'] }}</span>
+                <span class="px-2.5 py-0.5 rounded text-sm bg-notion-sidebar border border-notion-border">
+                  {{ $bp['subject_name'] }}@if(count($bp['classes']) > 0) <span class="text-notion-gray">({{ count($bp['classes']) }} kelas)</span>@endif
+                </span>
               @empty
                 <span class="text-sm text-notion-gray">-</span>
               @endforelse
@@ -128,11 +130,11 @@
   <div class="md:hidden divide-y divide-notion-border">
     @forelse($teachers as $idx => $t)
     @php
-      $groupedBySub = $t->subjects->groupBy('id');
-      $bindingsMob = $groupedBySub->map(function ($rows, $subId) {
+      $groupedBySub = $t->subjects->groupBy(fn ($s) => $s->id . ':' . ($s->pivot->group_key ?? 1));
+      $bindingsMob = $groupedBySub->map(function ($rows) {
         $first = $rows->first();
         $cls = $rows->pluck('pivot.kelas')->filter()->unique()->sort(SORT_NATURAL | SORT_FLAG_CASE)->values()->all();
-        return ['subject_id' => (string) $subId, 'subject_name' => $first->name, 'classes' => $cls];
+        return ['subject_id' => (string) $first->id, 'subject_name' => $first->name, 'classes' => $cls];
       })->values()->all();
       $teacherPayloadMob = [
         'nip' => $t->nip ?? $t->username,
