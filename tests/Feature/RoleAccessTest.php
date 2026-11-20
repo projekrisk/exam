@@ -133,5 +133,11 @@ class RoleAccessTest extends TestCase
 
         $this->assertSame(['X-E1', 'X-E2', 'X-E3'], $bankX->target_classes);
         $this->assertSame(['XII-F3', 'XII-F4', 'XII-F5'], $bankXII->target_classes);
+
+        // Guru profile shows mapped subjects & classes; Panitia profile shows Panitia role
+        $this->actingAs($guru)->get('/profil')->assertOk()->assertSee('Sosiologi')->assertSee('X-E1')->assertSee('XII-F5');
+        $panitia = User::factory()->create(['username' => 'panitia_prof', 'role' => 'panitia']);
+        $this->actingAs($panitia)->get('/profil')->assertOk()->assertSee('Wewenang Panitia Ujian');
+        $this->actingAs($guru)->get('/')->assertOk()->assertSee('Siswa Diampu');
     }
 }

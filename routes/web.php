@@ -25,6 +25,7 @@ Route::post('/masuk', [AuthWebController::class, 'login'])->name('login.post');
 
 Route::middleware('auth')->group(function () {
     Route::post('/keluar', [AuthWebController::class, 'logout'])->name('logout');
+    Route::get('/profil', [AuthWebController::class, 'showProfile'])->name('profile.show');
     Route::get('/ganti-password', [AuthWebController::class, 'showChangePassword'])->name('password.change');
     Route::post('/ganti-password', [AuthWebController::class, 'updatePassword'])->name('password.update');
 

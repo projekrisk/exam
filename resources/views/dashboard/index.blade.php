@@ -23,7 +23,7 @@
 
 <div class="grid grid-cols-2 sm:grid-cols-4 gap-6 pt-5 border-t border-notion-border">
   <div class="flex flex-col">
-    <span class="text-sm font-medium text-notion-gray mb-1">Total Siswa Aktif</span>
+    <span class="text-sm font-medium text-notion-gray mb-1">{{ auth()->user()->isGuru() ? 'Siswa Diampu' : 'Total Siswa Aktif' }}</span>
     <span class="text-2xl sm:text-3xl font-semibold text-notion-text tnum">{{ number_format($stats['students']) }}</span>
   </div>
   <div class="flex flex-col sm:border-l border-notion-border sm:pl-6">

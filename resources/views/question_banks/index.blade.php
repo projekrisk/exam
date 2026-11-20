@@ -179,9 +179,13 @@
           @if(auth()->user()->isGuru())
             @forelse($guruBindings as $gb)
               @php
-                $gbLabel = $gb['subject_name'] . (!empty($gb['classes']) ? ' (' . implode(', ', $gb['classes']) . ')' : '');
+                $cls = $gb['classes'] ?? [];
+                $shortCls = count($cls) > 2
+                  ? implode(', ', array_slice($cls, 0, 2)) . ', ...'
+                  : implode(', ', $cls);
+                $gbLabel = $gb['subject_name'] . ($shortCls !== '' ? ' (' . $shortCls . ')' : '');
               @endphp
-              <button type="button" onclick='selectGuruBinding(@json($gb), @json($gbLabel))' class="w-full text-left px-2.5 py-1.5 rounded text-sm hover:bg-notion-hover text-notion-text filter-item" data-label="{{ strtolower($gbLabel) }}">
+              <button type="button" onclick='selectGuruBinding(@json($gb))' class="w-full text-left px-2.5 py-1.5 rounded text-sm hover:bg-notion-hover text-notion-text filter-item" data-label="{{ strtolower($gbLabel) }}">
                 {{ $gbLabel }}
               </button>
             @empty
@@ -258,8 +262,8 @@
     ).join('');
   }
 
-  function selectGuruBinding(gb, label) {
-    selectSinglePicker('bank-subject-id', 'search-bank-subject', 'bank-subject-list', 'bank-subject-tag', String(gb.subject_id), label, 'search-bank-subject-wrap');
+  function selectGuruBinding(gb) {
+    selectSinglePicker('bank-subject-id', 'search-bank-subject', 'bank-subject-list', 'bank-subject-tag', String(gb.subject_id), gb.subject_name, 'search-bank-subject-wrap');
     document.getElementById('bank-binding-key').value = gb.key || '';
     renderReadOnlyBankClasses(gb.classes || []);
   }
@@ -295,9 +299,7 @@
     document.getElementById('modal-bank-title').textContent = 'Buat Bank Soal Baru';
     document.getElementById('bank-submit-btn').textContent = 'Buat & Isi Soal';
     if (IS_GURU && GURU_BINDINGS.length === 1) {
-      const gb = GURU_BINDINGS[0];
-      const lbl = gb.subject_name + (gb.classes?.length ? ` (${gb.classes.join(', ')})` : '');
-      selectGuruBinding(gb, lbl);
+      selectGuruBinding(GURU_BINDINGS[0]);
     }
     openAppModal('modal-add-bank');
   }
@@ -316,8 +318,7 @@
         JSON.stringify([...(gb.classes || [])].sort()) === JSON.stringify([...targets].sort())
       ) || GURU_BINDINGS.find(gb => String(gb.subject_id) === String(bank.subject_id));
       if (matched) {
-        const lbl = matched.subject_name + (matched.classes?.length ? ` (${matched.classes.join(', ')})` : '');
-        selectGuruBinding(matched, lbl);
+        selectGuruBinding(matched);
       } else if (bank.subject_id) {
         selectBankSubject(bank.subject_id, bank.subject_name);
         renderReadOnlyBankClasses(targets);

@@ -47,6 +47,15 @@ class AuthWebController extends Controller
         return redirect()->route('login');
     }
 
+    public function showProfile(Request $request): View
+    {
+        $user = $request->user();
+        $bindings = $user->isGuru() ? $user->subjectBindingGroups() : [];
+        $allClasses = $user->isGuru() ? $user->allAssignedClasses() : [];
+
+        return view('auth.profile', compact('user', 'bindings', 'allClasses'));
+    }
+
     public function showChangePassword(): View
     {
         return view('auth.change-password');

@@ -177,7 +177,11 @@
     </div>
 
     <div class="p-3 border-t border-notion-border space-y-1">
-      <a href="{{ route('password.change') }}" title="Ganti Password" class="sidebar-link w-full flex items-center gap-2 px-2.5 py-1.5 text-sm text-notion-gray hover:bg-notion-hover hover:text-notion-text rounded-md transition-colors">
+      <a href="{{ route('profile.show') }}" title="Profil" class="sidebar-link w-full flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-md transition-colors {{ request()->routeIs('profile.show') ? 'bg-notion-hover text-notion-text font-semibold' : 'text-notion-gray hover:bg-notion-hover hover:text-notion-text font-medium' }}">
+        <i data-lucide="user" class="w-4 h-4 shrink-0"></i>
+        <span class="sidebar-label truncate">Profil</span>
+      </a>
+      <a href="{{ route('password.change') }}" title="Ganti Password" class="sidebar-link w-full flex items-center gap-2 px-2.5 py-1.5 text-sm rounded-md transition-colors {{ request()->routeIs('password.change') ? 'bg-notion-hover text-notion-text font-semibold' : 'text-notion-gray hover:bg-notion-hover hover:text-notion-text font-medium' }}">
         <i data-lucide="key-round" class="w-4 h-4 shrink-0"></i>
         <span class="sidebar-label truncate">Ganti Password</span>
       </a>
@@ -232,15 +236,15 @@
       <div class="max-w-5xl mx-auto px-5 sm:px-10 md:px-14 py-8 md:py-12 space-y-8">
 
         @if(auth()->user()->must_change_password)
-        <div class="flex items-center justify-between gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm">
-          <div class="flex items-center gap-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg text-sm">
+          <div class="flex flex-col sm:flex-row sm:items-center gap-2.5 sm:gap-3">
             <i data-lucide="alert-triangle" class="w-5 h-5 text-amber-600 shrink-0"></i>
             <div>
               <h4 class="font-semibold text-amber-900">Keamanan Akun Guru</h4>
               <p class="text-amber-800">Anda masih menggunakan password default. Disarankan segera mengganti password Anda.</p>
             </div>
           </div>
-          <a href="{{ route('password.change') }}" class="px-3 py-1.5 bg-white border border-amber-300 text-amber-900 text-sm font-semibold rounded-md hover:bg-amber-100 shrink-0">Ganti Sekarang</a>
+          <a href="{{ route('password.change') }}" class="w-full sm:w-auto text-center px-3 py-1.5 bg-white border border-amber-300 text-amber-900 text-sm font-semibold rounded-md hover:bg-amber-100 shrink-0">Ganti Sekarang</a>
         </div>
         @endif
 

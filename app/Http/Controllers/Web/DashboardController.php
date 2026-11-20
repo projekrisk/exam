@@ -18,7 +18,9 @@ class DashboardController extends Controller
         $user = $request->user();
 
         $examQuery = Exam::with(['subject', 'creator'])
-            ->when($user->isGuru(), fn ($q) => $q->where('created_by', $user->id));
+            ->when($user->isGuru(), fn ($q) => $q->where(fn ($sub) => $sub
+                ->where('created_by', $user->id)
+                ->orWhereHas('questionBank', fn ($qb) => $qb->where('teacher_id', $user->id))));
 
         $activeExams = (clone $examQuery)
             ->where('status', 'active')
@@ -28,8 +30,13 @@ class DashboardController extends Controller
             ->get()
             ->each->refreshTokenIfNeeded();
 
+        $guruClasses = $user->isGuru() ? $user->allAssignedClasses() : [];
+        $studentCount = $user->isGuru()
+            ? (empty($guruClasses) ? 0 : Student::where('is_active', true)->whereIn('kelas', $guruClasses)->count())
+            : Student::where('is_active', true)->count();
+
         $stats = [
-            'students' => Student::where('is_active', true)->count(),
+            'students' => $studentCount,
             'teachers' => User::where('role', 'guru')->count(),
             'banks' => QuestionBank::when($user->isGuru(), fn ($q) => $q->where('teacher_id', $user->id))
                 ->when(! $user->isGuru() && ! $user->isSuperAdmin(), fn ($q) => $q->where(fn ($sub) => $sub
@@ -40,10 +47,17 @@ class DashboardController extends Controller
             'pending_essays' => ExamAttempt::where('grading_status', 'pending_essay')
                 ->when($user->isGuru(), fn ($q) => $q->whereHas('exam.questionBank', fn ($qb) => $qb->where('teacher_id', $user->id)))
                 ->count(),
-            'active_attempts' => ExamAttempt::where('status', 'in_progress')->count(),
+            'active_attempts' => ExamAttempt::where('status', 'in_progress')
+                ->when($user->isGuru(), fn ($q) => $q->whereHas('exam', fn ($eq) => $eq
+                    ->where('created_by', $user->id)
+                    ->orWhereHas('questionBank', fn ($qb) => $qb->where('teacher_id', $user->id))))
+                ->count(),
         ];
 
         $recentAttempts = ExamAttempt::with(['student', 'exam.subject'])
+            ->when($user->isGuru(), fn ($q) => $q->whereHas('exam', fn ($eq) => $eq
+                ->where('created_by', $user->id)
+                ->orWhereHas('questionBank', fn ($qb) => $qb->where('teacher_id', $user->id))))
             ->latest('updated_at')
             ->limit(8)
             ->get();
