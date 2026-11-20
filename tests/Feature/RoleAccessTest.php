@@ -143,4 +143,54 @@ class RoleAccessTest extends TestCase
         $this->actingAs($panitia)->get('/profil')->assertOk()->assertSee('Wewenang Panitia Ujian');
         $this->actingAs($guru)->get('/')->assertOk()->assertSee('Siswa Diampu');
     }
+
+    public function test_generate_rooms_half_split_and_seating_plan(): void
+    {
+        $panitia = User::factory()->create(['username' => 'panitia_room', 'role' => 'panitia']);
+
+        for ($i = 1; $i <= 31; $i++) {
+            \App\Models\Student::create([
+                'nis' => sprintf('250%02d', $i),
+                'nisn' => sprintf('00990%02d', $i),
+                'name' => sprintf('Siswa A-%02d', $i),
+                'kelas' => 'X-E1',
+                'is_active' => true,
+            ]);
+        }
+        for ($i = 1; $i <= 15; $i++) {
+            \App\Models\Student::create([
+                'nis' => sprintf('251%02d', $i),
+                'nisn' => sprintf('00991%02d', $i),
+                'name' => sprintf('Siswa B-%02d', $i),
+                'kelas' => 'X-E2',
+                'is_active' => true,
+            ]);
+        }
+
+        $this->actingAs($panitia)->post('/kartu-ujian/generate-ruang', [
+            'room_count' => 2,
+            'max_per_room' => 40,
+            'class_count' => 2,
+            'distribution_mode' => 'half_split',
+            'seat_count' => 40,
+            'rows' => 5,
+            'cols' => 8,
+            'seating_pattern' => 'zigzag',
+        ])->assertRedirect('/kartu-ujian');
+
+        $ruang1Count = \App\Models\Student::where('ruang', 'Ruang 1')->count();
+        $ruang2Count = \App\Models\Student::where('ruang', 'Ruang 2')->count();
+        $ruang1FromClass1 = \App\Models\Student::where('ruang', 'Ruang 1')->where('kelas', 'X-E1')->count();
+        $ruang2FromClass1 = \App\Models\Student::where('ruang', 'Ruang 2')->where('kelas', 'X-E1')->count();
+
+        $this->assertSame(20, $ruang1FromClass1);
+        $this->assertSame(11, $ruang2FromClass1);
+        $this->assertSame(20, $ruang2Count);
+        $this->assertSame(26, $ruang1Count);
+
+        $this->actingAs($panitia)->get('/kartu-ujian/denah?ruang=Ruang+1&pattern=zigzag')
+            ->assertOk()
+            ->assertSee('Meja 01')
+            ->assertSee('Zigzag');
+    }
 }

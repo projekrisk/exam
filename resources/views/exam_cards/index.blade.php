@@ -4,10 +4,20 @@
 @section('breadcrumb', 'Kartu Ujian')
 
 @section('content')
-<div class="space-y-3">
-  <i data-lucide="id-card" class="w-12 h-12 text-notion-text/80"></i>
-  <h1 class="text-3xl font-bold tracking-tight">Kartu Ujian</h1>
-  <p class="text-notion-gray text-sm">Pengelolaan dan pencetakan kartu peserta ujian.</p>
+<div class="flex flex-col sm:flex-row sm:items-end justify-between gap-4">
+  <div class="space-y-3">
+    <i data-lucide="id-card" class="w-12 h-12 text-notion-text/80"></i>
+    <h1 class="text-3xl font-bold tracking-tight">Kartu Ujian</h1>
+    <p class="text-notion-gray text-sm">Pengelolaan dan pencetakan kartu peserta ujian, pembagian ruang otomatis, serta denah tempat duduk.</p>
+  </div>
+  <div class="flex flex-wrap items-center gap-2 shrink-0">
+    <a href="{{ route('exam-cards.seating-plan') }}" target="_blank" class="px-3.5 py-2 bg-white border border-notion-border text-notion-text rounded-md text-sm font-medium hover:bg-notion-hover transition-colors inline-flex items-center gap-1.5 shadow-sm">
+      <i data-lucide="layout-grid" class="w-4 h-4 text-notion-gray"></i> Denah Duduk
+    </a>
+    <button type="button" onclick="openAppModal('modal-generate-rooms')" class="px-3.5 py-2 bg-notion-text text-white rounded-md text-sm font-medium hover:bg-black transition-colors inline-flex items-center gap-1.5 shadow-sm">
+      <i data-lucide="sparkles" class="w-4 h-4"></i> Generate Ruang
+    </button>
+  </div>
 </div>
 
 <div class="border border-notion-border rounded-lg bg-white overflow-hidden shadow-sm">
@@ -76,7 +86,12 @@
             <td class="py-3 px-4">
               <span class="px-2 py-0.5 rounded bg-notion-sidebar border border-notion-border text-sm font-medium">{{ $student->kelas }}</span>
             </td>
-            <td class="py-3 px-4 text-notion-text">{{ $student->ruang ?: '-' }}</td>
+            <td class="py-3 px-4 text-notion-text">
+              {{ $student->ruang ?: '-' }}
+              @if($student->seat_number)
+                <span class="ml-1 px-1.5 py-0.5 text-xs font-mono rounded bg-notion-sidebar border border-notion-border text-notion-gray">Meja {{ str_pad((string) $student->seat_number, 2, '0', STR_PAD_LEFT) }}</span>
+              @endif
+            </td>
             <td class="py-3 px-4 text-right">
               <a href="{{ route('exam-cards.print', ['student_id' => $student->id]) }}" target="_blank"
                  class="inline-flex items-center gap-1.5 px-3 py-1.5 bg-white border border-notion-border rounded-md text-sm font-medium hover:bg-notion-hover transition-colors">
@@ -110,7 +125,7 @@
           </div>
           <div class="flex justify-between">
             <span class="text-notion-gray">Kelas / Ruang</span>
-            <span class="font-medium">{{ $student->kelas }} · Ruang {{ $student->ruang ?: '-' }}</span>
+            <span class="font-medium">{{ $student->kelas }} · {{ $student->ruang ?: '-' }}{{ $student->seat_number ? ' (Meja ' . str_pad((string) $student->seat_number, 2, '0', STR_PAD_LEFT) . ')' : '' }}</span>
           </div>
           <div class="pt-2 border-t border-notion-border flex justify-end">
             <a href="{{ route('exam-cards.print', ['student_id' => $student->id]) }}" target="_blank"
@@ -128,6 +143,83 @@
 
   <x-simple-pagination :paginator="$students" />
 </div>
+
+@push('modals')
+<div id="modal-generate-rooms" class="hidden fixed inset-0 w-screen h-screen z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/40 backdrop-blur-sm opacity-0 transition-opacity duration-200" onclick="closeAppModal('modal-generate-rooms')">
+  <div onclick="event.stopPropagation()" class="bg-white border border-notion-border rounded-t-2xl sm:rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-xl transform translate-y-6 sm:translate-y-0 sm:scale-95 transition-all duration-200 overflow-hidden">
+    <div class="sm:hidden pt-2.5 pb-1 flex justify-center shrink-0 bg-white">
+      <div class="w-10 h-1.5 bg-notion-border rounded-full"></div>
+    </div>
+    <div class="sticky top-0 z-10 bg-white px-6 py-4 border-b border-notion-border flex items-center justify-between shrink-0">
+      <h3 class="font-bold text-lg">Generate Ruang &amp; Meja Peserta</h3>
+      <button type="button" onclick="closeAppModal('modal-generate-rooms')" class="p-1 text-notion-gray hover:text-notion-text rounded-md hover:bg-notion-hover"><i data-lucide="x" class="w-4 h-4"></i></button>
+    </div>
+    <form method="POST" action="{{ route('exam-cards.generate-rooms') }}" class="p-6 overflow-y-auto flex-1 space-y-4">
+      @csrf
+      <div class="p-3 rounded-lg bg-notion-sidebar/70 border border-notion-border flex items-center justify-between text-sm">
+        <span class="text-notion-gray">Total Siswa Aktif Terdata</span>
+        <span class="font-bold tnum text-notion-text">{{ number_format($totalActiveStudents) }} siswa</span>
+      </div>
+
+      <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">Banyak Ruang</label>
+          <input type="number" name="room_count" value="{{ $seatingConfig['room_count'] }}" min="1" max="200" required class="w-full border border-notion-border rounded-md px-3 py-2 text-sm tnum">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Maks / Ruang</label>
+          <input type="number" name="max_per_room" id="gen-max-per-room" value="{{ $seatingConfig['max_per_room'] }}" min="1" max="200" required onchange="document.getElementById('gen-seat-count').value = this.value" class="w-full border border-notion-border rounded-md px-3 py-2 text-sm tnum">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">Banyak Kelas</label>
+          <input type="number" name="class_count" value="{{ $totalClassCount ?: 1 }}" min="1" max="200" required class="w-full border border-notion-border rounded-md px-3 py-2 text-sm tnum">
+        </div>
+      </div>
+
+      <div>
+        <label class="block text-sm font-medium mb-1">Model Pembagian Ruang</label>
+        <select name="distribution_mode" class="modern-select w-full">
+          <option value="half_split">Setengah Kapasitas per Putaran (Contoh: 40/ruang → 20 + 20)</option>
+          <option value="sequential">Sekuensial Penuh per Ruang</option>
+        </select>
+        <p class="mt-1 text-xs text-notion-gray">Mode setengah kapasitas mengisi tiap ruang separuh dulu (misal 20 siswa), lalu putaran kedua mengisi sisa kursinya dengan kelas berikutnya.</p>
+      </div>
+
+      <div class="pt-3 border-t border-notion-border space-y-3">
+        <p class="text-sm font-semibold text-notion-text">Pengaturan Denah Duduk</p>
+        <div class="grid grid-cols-3 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-notion-gray mb-1">Jumlah Kursi</label>
+            <input type="number" name="seat_count" id="gen-seat-count" value="{{ $seatingConfig['seat_count'] }}" min="1" max="200" required class="w-full border border-notion-border rounded-md px-3 py-2 text-sm tnum">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-notion-gray mb-1">Jumlah Baris</label>
+            <input type="number" name="rows" value="{{ $seatingConfig['rows'] }}" min="1" max="30" required class="w-full border border-notion-border rounded-md px-3 py-2 text-sm tnum">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-notion-gray mb-1">Jumlah Kolom</label>
+            <input type="number" name="cols" value="{{ $seatingConfig['cols'] }}" min="1" max="20" required class="w-full border border-notion-border rounded-md px-3 py-2 text-sm tnum">
+          </div>
+        </div>
+        <div>
+          <label class="block text-xs font-medium text-notion-gray mb-1">Model Urutan Meja</label>
+          <select name="seating_pattern" class="modern-select w-full">
+            <option value="left_to_right" {{ $seatingConfig['seating_pattern'] === 'left_to_right' ? 'selected' : '' }}>Kiri ke Kanan</option>
+            <option value="right_to_left" {{ $seatingConfig['seating_pattern'] === 'right_to_left' ? 'selected' : '' }}>Kanan ke Kiri</option>
+            <option value="front_to_back" {{ $seatingConfig['seating_pattern'] === 'front_to_back' ? 'selected' : '' }}>Depan ke Belakang</option>
+            <option value="zigzag" {{ $seatingConfig['seating_pattern'] === 'zigzag' ? 'selected' : '' }}>Zigzag (Ular)</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="flex justify-end gap-2 pt-2">
+        <button type="button" onclick="closeAppModal('modal-generate-rooms')" class="px-4 py-2 text-sm text-notion-gray hover:bg-notion-hover rounded-md">Batal</button>
+        <button type="submit" class="px-4 py-2 bg-notion-blue text-white text-sm font-medium rounded-md hover:bg-notion-blueHover">Generate Sekarang</button>
+      </div>
+    </form>
+  </div>
+</div>
+@endpush
 
 <script>
   function updateSelectedPrintCount() {

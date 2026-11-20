@@ -39,6 +39,8 @@ Route::middleware('auth')->group(function () {
 
         Route::get('/kartu-ujian', [ExamCardController::class, 'index'])->name('exam-cards.index');
         Route::get('/kartu-ujian/cetak', [ExamCardController::class, 'print'])->name('exam-cards.print');
+        Route::post('/kartu-ujian/generate-ruang', [ExamCardController::class, 'generateRooms'])->name('exam-cards.generate-rooms');
+        Route::get('/kartu-ujian/denah', [ExamCardController::class, 'seatingPlan'])->name('exam-cards.seating-plan');
     });
 
     Route::middleware('role:super_admin')->group(function () {

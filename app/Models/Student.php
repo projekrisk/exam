@@ -10,7 +10,7 @@ class Student extends Authenticatable
 {
     use HasApiTokens;
 
-    protected $fillable = ['nis', 'nisn', 'name', 'kelas', 'ruang', 'is_active'];
+    protected $fillable = ['nis', 'nisn', 'name', 'kelas', 'ruang', 'seat_number', 'is_active'];
 
     protected $hidden = ['nisn'];
 

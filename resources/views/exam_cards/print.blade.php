@@ -87,13 +87,13 @@
     .sheet {
       width: 210mm;
       height: 297mm;
-      padding: 7.5mm;
+      padding: 6mm 7.5mm;
       background: #ffffff;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       display: grid;
       grid-template-columns: repeat(2, 1fr);
       grid-template-rows: repeat(4, 1fr);
-      gap: 4mm;
+      gap: 3mm 4mm;
       page-break-after: always;
     }
 
@@ -102,9 +102,9 @@
     }
 
     .exam-card {
-      border: 1px solid #000000;
+      border: 1.2px solid #000000;
       border-radius: 3px;
-      padding: 2.6mm 3.2mm;
+      padding: 2mm 2.8mm;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -116,14 +116,14 @@
     .card-kop {
       display: flex;
       align-items: center;
-      gap: 2.8mm;
-      padding-bottom: 1.5mm;
+      gap: 2.5mm;
+      padding-bottom: 1mm;
       border-bottom: 1.5px solid #000000;
     }
 
     .kop-logo {
-      width: 11.5mm;
-      height: 11.5mm;
+      width: 10mm;
+      height: 10mm;
       object-fit: contain;
       flex-shrink: 0;
     }
@@ -162,9 +162,9 @@
 
     .card-heading {
       text-align: center;
-      padding: 1mm 0 0.4mm;
-      margin-top: 0.6mm;
-      line-height: 1.18;
+      padding: 0.5mm 0 0.2mm;
+      margin-top: 0.3mm;
+      line-height: 1.12;
     }
 
     .card-title {
@@ -192,15 +192,16 @@
     .card-data {
       display: flex;
       flex-direction: column;
-      gap: 1mm;
-      padding: 1.2mm 0;
+      gap: 0.8mm;
+      padding: 0.6mm 0;
     }
 
     .data-name-row {
       display: flex;
       align-items: baseline;
-      font-size: 9pt;
-      padding-bottom: 0.3mm;
+      font-size: 8.8pt;
+      padding-bottom: 0.8mm;
+      border-bottom: 0.6px solid #e5e7eb;
     }
 
     .data-name-row .lbl {
@@ -231,9 +232,47 @@
     .data-cols {
       display: grid;
       grid-template-columns: 1.15fr 0.85fr;
-      gap: 2mm;
-      font-size: 8.2pt;
-      line-height: 1.26;
+      gap: 2.5mm;
+      align-items: stretch;
+      font-size: 8pt;
+      line-height: 1.25;
+    }
+
+    .placement-box {
+      border: 0.9px solid #000000;
+      border-radius: 2px;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      overflow: hidden;
+      align-self: center;
+    }
+
+    .placement-cell {
+      padding: 1mm 1.4mm;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .placement-cell + .placement-cell {
+      border-left: 0.8px solid #000000;
+      background: #f3f4f6;
+    }
+
+    .placement-lbl {
+      font-size: 6.2pt;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      color: #374151;
+    }
+
+    .placement-val {
+      font-size: 8.5pt;
+      font-weight: 800;
+      color: #000000;
+      margin-top: 0.2mm;
     }
 
     .meta-table {
@@ -272,13 +311,14 @@
       justify-content: space-between;
       gap: 3mm;
       padding-top: 0.8mm;
+      border-top: 0.6px solid #d1d5db;
     }
 
     .footer-note {
       flex: 1;
-      font-size: 6.8pt;
+      font-size: 6.6pt;
       color: #000000;
-      line-height: 1.25;
+      line-height: 1.22;
     }
 
     .footer-note strong {
@@ -290,8 +330,8 @@
     .sign-box {
       text-align: left;
       min-width: 38mm;
-      font-size: 7.4pt;
-      line-height: 1.14;
+      font-size: 7pt;
+      line-height: 1.12;
       color: #000000;
       flex-shrink: 0;
     }
@@ -302,9 +342,9 @@
     }
 
     .sign-barcode {
-      width: 9.5mm;
-      height: 9.5mm;
-      margin: 0.6mm 0;
+      width: 8mm;
+      height: 8mm;
+      margin: 0.4mm 0;
       background: #ffffff;
       display: flex;
       align-items: center;
@@ -324,7 +364,7 @@
     }
 
     .sign-nip {
-      font-size: 6.8pt;
+      font-size: 6.5pt;
       color: #000000;
     }
 
@@ -428,20 +468,23 @@
                       <td class="sep">:</td>
                       <td class="val mono">{{ $student->nisn }}</td>
                     </tr>
-                  </table>
-
-                  <table class="meta-table">
                     <tr>
                       <td class="lbl">Kelas</td>
                       <td class="sep">:</td>
                       <td class="val">{{ $student->kelas }}</td>
                     </tr>
-                    <tr>
-                      <td class="lbl">Ruang</td>
-                      <td class="sep">:</td>
-                      <td class="val">{{ $student->ruang ?: '-' }}</td>
-                    </tr>
                   </table>
+
+                  <div class="placement-box">
+                    <div class="placement-cell">
+                      <div class="placement-lbl">Ruang</div>
+                      <div class="placement-val">{{ $student->ruang ?: '-' }}</div>
+                    </div>
+                    <div class="placement-cell">
+                      <div class="placement-lbl">No. Meja</div>
+                      <div class="placement-val mono">{{ $student->seat_number ? str_pad((string) $student->seat_number, 2, '0', STR_PAD_LEFT) : '-' }}</div>
+                    </div>
+                  </div>
                 </div>
               </div>
 
