@@ -99,11 +99,6 @@
     }
     .text-center { text-align: center; }
     .font-bold { font-weight: 700; }
-    .mapel-item + .mapel-item {
-      margin-top: 1.2mm;
-      padding-top: 1.2mm;
-      border-top: 0.5px dashed #9ca3af;
-    }
 
     .sign-wrap {
       display: flex;
@@ -168,25 +163,31 @@
         </thead>
         <tbody>
           @forelse($teachers as $idx => $teacher)
-          <tr>
-            <td class="text-center">{{ $idx + 1 }}</td>
-            <td class="mono">{{ $teacher->nip ?? $teacher->username }}</td>
-            <td class="font-bold">{{ $teacher->name }}</td>
-            <td>
-              @forelse($teacher->binding_groups as $bg)
-                <div class="mapel-item">{{ $bg['subject_name'] }}</div>
-              @empty
-                <span>-</span>
-              @endforelse
-            </td>
-            <td>
-              @forelse($teacher->binding_groups as $bg)
-                <div class="mapel-item">{{ !empty($bg['classes']) ? implode(', ', $bg['classes']) : '-' }}</div>
-              @empty
-                <span>-</span>
-              @endforelse
-            </td>
-          </tr>
+            @php
+              $groups = $teacher->binding_groups ?? [];
+              $rowCount = max(1, count($groups));
+            @endphp
+            @if(empty($groups))
+              <tr>
+                <td class="text-center">{{ $idx + 1 }}</td>
+                <td class="mono">{{ $teacher->nip ?? $teacher->username }}</td>
+                <td class="font-bold">{{ $teacher->name }}</td>
+                <td>-</td>
+                <td>-</td>
+              </tr>
+            @else
+              @foreach($groups as $gIdx => $bg)
+                <tr>
+                  @if($gIdx === 0)
+                    <td rowspan="{{ $rowCount }}" class="text-center">{{ $idx + 1 }}</td>
+                    <td rowspan="{{ $rowCount }}" class="mono">{{ $teacher->nip ?? $teacher->username }}</td>
+                    <td rowspan="{{ $rowCount }}" class="font-bold">{{ $teacher->name }}</td>
+                  @endif
+                  <td>{{ $bg['subject_name'] }}</td>
+                  <td>{{ !empty($bg['classes']) ? implode(', ', $bg['classes']) : '-' }}</td>
+                </tr>
+              @endforeach
+            @endif
           @empty
           <tr>
             <td colspan="5" class="text-center" style="padding: 6mm;">Tidak ada data guru mata pelajaran.</td>
