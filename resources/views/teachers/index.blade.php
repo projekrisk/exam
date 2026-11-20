@@ -18,11 +18,16 @@
              class="w-full border border-notion-border rounded-md pl-9 pr-3 py-2 text-sm bg-white focus:outline-none focus:border-notion-blue">
     </form>
 
-    @if(auth()->user()->isSuperAdmin())
-    <button onclick="openCreateTeacherModal()" class="w-full sm:w-auto px-3.5 py-2 border border-transparent bg-notion-blue text-white text-sm font-medium rounded-md hover:bg-notion-blueHover transition-colors flex items-center justify-center gap-1.5 shadow-sm shrink-0">
-      <i data-lucide="plus" class="w-4 h-4"></i> Tambah Guru
-    </button>
-    @endif
+    <div class="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto shrink-0">
+      <a href="{{ route('teachers.print', ['q' => $search]) }}" target="_blank" class="w-full sm:w-auto px-3.5 py-2 bg-white border border-notion-border text-notion-text text-sm font-medium rounded-md hover:bg-notion-hover transition-colors flex items-center justify-center gap-1.5 shadow-sm shrink-0">
+        <i data-lucide="printer" class="w-4 h-4 text-notion-gray"></i> Cetak Guru Mapel
+      </a>
+      @if(auth()->user()->isSuperAdmin())
+      <button onclick="openCreateTeacherModal()" class="w-full sm:w-auto px-3.5 py-2 border border-transparent bg-notion-blue text-white text-sm font-medium rounded-md hover:bg-notion-blueHover transition-colors flex items-center justify-center gap-1.5 shadow-sm shrink-0">
+        <i data-lucide="plus" class="w-4 h-4"></i> Tambah Guru
+      </button>
+      @endif
+    </div>
   </div>
 
   <div class="hidden md:block">

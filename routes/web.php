@@ -34,6 +34,7 @@ Route::middleware('auth')->group(function () {
     Route::middleware('role:super_admin,admin,panitia')->group(function () {
         Route::get('/siswa', [StudentController::class, 'index'])->name('students.index');
         Route::get('/guru', [TeacherController::class, 'index'])->name('teachers.index');
+        Route::get('/guru/cetak', [TeacherController::class, 'print'])->name('teachers.print');
         Route::get('/mata-pelajaran', [SubjectController::class, 'index'])->name('subjects.index');
 
         Route::get('/kartu-ujian', [ExamCardController::class, 'index'])->name('exam-cards.index');

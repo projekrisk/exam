@@ -18,6 +18,7 @@ class RoleAccessTest extends TestCase
         $this->actingAs($superAdmin)->get('/pengguna')->assertOk();
         $this->actingAs($superAdmin)->get('/siswa')->assertOk();
         $this->actingAs($superAdmin)->get('/guru')->assertOk();
+        $this->actingAs($superAdmin)->get('/guru/cetak')->assertOk();
         $this->actingAs($superAdmin)->get('/mata-pelajaran')->assertOk();
         $this->actingAs($superAdmin)->get('/kartu-ujian')->assertOk();
     }
@@ -38,6 +39,7 @@ class RoleAccessTest extends TestCase
 
         $this->actingAs($panitia)->get('/siswa')->assertOk();
         $this->actingAs($panitia)->get('/guru')->assertOk();
+        $this->actingAs($panitia)->get('/guru/cetak')->assertOk();
         $this->actingAs($panitia)->get('/mata-pelajaran')->assertOk();
         $this->actingAs($panitia)->get('/kartu-ujian')->assertOk();
 
@@ -56,6 +58,7 @@ class RoleAccessTest extends TestCase
         $this->actingAs($guru)->get('/pengguna')->assertForbidden();
         $this->actingAs($guru)->get('/siswa')->assertForbidden();
         $this->actingAs($guru)->get('/guru')->assertForbidden();
+        $this->actingAs($guru)->get('/guru/cetak')->assertForbidden();
         $this->actingAs($guru)->get('/mata-pelajaran')->assertForbidden();
         $this->actingAs($guru)->get('/kartu-ujian')->assertForbidden();
 

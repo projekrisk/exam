@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Web;
 
 use App\Http\Controllers\Controller;
+use App\Models\AppSetting;
 use App\Models\Student;
 use App\Models\Subject;
 use App\Models\User;
@@ -31,6 +32,54 @@ class TeacherController extends Controller
         $classes = Student::select('kelas')->distinct()->pluck('kelas')->sort(SORT_NATURAL | SORT_FLAG_CASE)->values();
 
         return view('teachers.index', compact('teachers', 'subjects', 'classes', 'search'));
+    }
+
+    public function print(Request $request): View
+    {
+        $search = trim((string) $request->query('q', ''));
+
+        $teachers = User::with('subjects')
+            ->where('role', 'guru')
+            ->when($search !== '', fn ($q) => $q->where(fn ($sub) => $sub
+                ->where('name', 'like', "%{$search}%")
+                ->orWhere('username', 'like', "%{$search}%")
+                ->orWhere('nip', 'like', "%{$search}%")))
+            ->orderBy('name')
+            ->get()
+            ->map(function (User $teacher) {
+                $teacher->binding_groups = $teacher->subjects
+                    ->groupBy(fn ($s) => $s->id . ':' . ($s->pivot->group_key ?? 1))
+                    ->map(function ($rows) {
+                        $first = $rows->first();
+                        $classes = $rows->pluck('pivot.kelas')
+                            ->filter()
+                            ->unique()
+                            ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+                            ->values()
+                            ->all();
+
+                        return [
+                            'subject_name' => $first->name,
+                            'classes' => $classes,
+                        ];
+                    })
+                    ->sortBy('subject_name')
+                    ->values()
+                    ->all();
+
+                return $teacher;
+            });
+
+        $settings = array_merge([
+            'school_name' => 'SMAN 1 Malingping',
+            'school_logo_path' => '',
+            'principal_name' => '',
+            'principal_nip' => '',
+            'activity_name' => 'Penilaian Sumatif Akhir Semester',
+            'academic_year' => '2026/2027',
+        ], AppSetting::allMap());
+
+        return view('teachers.print', compact('teachers', 'settings', 'search'));
     }
 
     public function store(Request $request): RedirectResponse
