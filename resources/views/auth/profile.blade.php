@@ -28,7 +28,7 @@
 
 <div class="border border-notion-border rounded-lg bg-white p-6 shadow-sm space-y-5">
   <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-5 border-b border-notion-border">
-    <div class="flex items-center gap-4 min-w-0">
+    <div class="flex flex-col sm:flex-row sm:items-center gap-3 sm:gap-4 min-w-0">
       <div class="w-14 h-14 rounded-full bg-notion-sidebar border border-notion-border flex items-center justify-center text-lg font-bold text-notion-text shrink-0">
         {{ strtoupper(substr($user->name, 0, 2)) }}
       </div>
@@ -45,8 +45,8 @@
       </div>
     </div>
 
-    <a href="{{ route('password.change') }}" class="px-4 py-2 bg-white border border-notion-border rounded-md text-sm font-medium hover:bg-notion-hover transition-colors inline-flex items-center justify-center gap-2 shrink-0 w-fit">
-      <i data-lucide="key-round" class="w-4 h-4 text-notion-gray"></i> Ganti Password
+    <a href="{{ route('password.change') }}" class="w-full sm:w-auto px-4 py-2 bg-notion-text text-white rounded-md text-sm font-medium hover:bg-black transition-colors inline-flex items-center justify-center gap-2 shrink-0">
+      <i data-lucide="key-round" class="w-4 h-4"></i> Ganti Password
     </a>
   </div>
 
