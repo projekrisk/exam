@@ -146,6 +146,7 @@ class RoleAccessTest extends TestCase
 
     public function test_generate_rooms_half_split_and_seating_plan(): void
     {
+        $admin = User::factory()->create(['username' => 'admin_room', 'role' => 'super_admin']);
         $panitia = User::factory()->create(['username' => 'panitia_room', 'role' => 'panitia']);
 
         for ($i = 1; $i <= 31; $i++) {
@@ -167,7 +168,21 @@ class RoleAccessTest extends TestCase
             ]);
         }
 
+        // Panitia tidak bisa generate ruang atau membuka denah duduk
         $this->actingAs($panitia)->post('/kartu-ujian/generate-ruang', [
+            'room_count' => 2,
+            'max_per_room' => 40,
+            'class_count' => 2,
+            'distribution_mode' => 'half_split',
+            'seat_count' => 40,
+            'rows' => 5,
+            'cols' => 8,
+            'seating_pattern' => 'zigzag',
+        ])->assertForbidden();
+        $this->actingAs($panitia)->get('/kartu-ujian/denah')->assertForbidden();
+        $this->actingAs($panitia)->get('/kartu-ujian')->assertOk()->assertDontSee('Generate Ruang')->assertDontSee('Denah Duduk');
+
+        $this->actingAs($admin)->post('/kartu-ujian/generate-ruang', [
             'room_count' => 2,
             'max_per_room' => 40,
             'class_count' => 2,
@@ -188,7 +203,7 @@ class RoleAccessTest extends TestCase
         $this->assertSame(20, $ruang2Count);
         $this->assertSame(26, $ruang1Count);
 
-        $this->actingAs($panitia)->get('/kartu-ujian/denah?ruang=Ruang+1&pattern=zigzag')
+        $this->actingAs($admin)->get('/kartu-ujian/denah?ruang=Ruang+1&pattern=zigzag')
             ->assertOk()
             ->assertSee('Meja 01')
             ->assertSee('Zigzag');

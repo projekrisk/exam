@@ -10,14 +10,16 @@
     <h1 class="text-3xl font-bold tracking-tight">Kartu Ujian</h1>
     <p class="text-notion-gray text-sm">Pengelolaan dan pencetakan kartu peserta ujian, pembagian ruang otomatis, serta denah tempat duduk.</p>
   </div>
-  <div class="flex flex-wrap items-center gap-2 shrink-0">
-    <a href="{{ route('exam-cards.seating-plan') }}" target="_blank" class="px-3.5 py-2 bg-white border border-notion-border text-notion-text rounded-md text-sm font-medium hover:bg-notion-hover transition-colors inline-flex items-center gap-1.5 shadow-sm">
-      <i data-lucide="layout-grid" class="w-4 h-4 text-notion-gray"></i> Denah Duduk
-    </a>
-    <button type="button" onclick="openAppModal('modal-generate-rooms')" class="px-3.5 py-2 bg-notion-text text-white rounded-md text-sm font-medium hover:bg-black transition-colors inline-flex items-center gap-1.5 shadow-sm">
-      <i data-lucide="sparkles" class="w-4 h-4"></i> Generate Ruang
-    </button>
-  </div>
+  @if(auth()->user()->isSuperAdmin())
+    <div class="flex flex-wrap items-center gap-2 shrink-0">
+      <a href="{{ route('exam-cards.seating-plan') }}" target="_blank" class="px-3.5 py-2 bg-white border border-notion-border text-notion-text rounded-md text-sm font-medium hover:bg-notion-hover transition-colors inline-flex items-center gap-1.5 shadow-sm">
+        <i data-lucide="layout-grid" class="w-4 h-4 text-notion-gray"></i> Denah Duduk
+      </a>
+      <button type="button" onclick="openAppModal('modal-generate-rooms')" class="px-3.5 py-2 bg-notion-text text-white rounded-md text-sm font-medium hover:bg-black transition-colors inline-flex items-center gap-1.5 shadow-sm">
+        <i data-lucide="sparkles" class="w-4 h-4"></i> Generate Ruang
+      </button>
+    </div>
+  @endif
 </div>
 
 <div class="border border-notion-border rounded-lg bg-white overflow-hidden shadow-sm">
@@ -144,6 +146,7 @@
   <x-simple-pagination :paginator="$students" />
 </div>
 
+@if(auth()->user()->isSuperAdmin())
 @push('modals')
 <div id="modal-generate-rooms" class="hidden fixed inset-0 w-screen h-screen z-[100] flex items-end sm:items-center justify-center sm:p-4 bg-black/40 backdrop-blur-sm opacity-0 transition-opacity duration-200" onclick="closeAppModal('modal-generate-rooms')">
   <div onclick="event.stopPropagation()" class="bg-white border border-notion-border rounded-t-2xl sm:rounded-xl max-w-lg w-full max-h-[90vh] flex flex-col shadow-xl transform translate-y-6 sm:translate-y-0 sm:scale-95 transition-all duration-200 overflow-hidden">
@@ -220,6 +223,7 @@
   </div>
 </div>
 @endpush
+@endif
 
 <script>
   function updateSelectedPrintCount() {
