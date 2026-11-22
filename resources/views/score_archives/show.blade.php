@@ -75,10 +75,10 @@
             @endif
           </td>
           <td class="py-3 px-4"><span class="px-2 py-0.5 rounded bg-notion-hover border border-notion-border text-xs font-medium">{{ $item->student_kelas }}</span></td>
-          <td class="py-3 px-4 text-right tnum">{{ (float) $item->objective_score }}</td>
-          <td class="py-3 px-4 text-right tnum">{{ (float) $item->essay_score }}</td>
-          <td class="py-3 px-4 text-right tnum text-notion-gray">{{ $item->manual_score !== null ? (float) $item->manual_score : '-' }}</td>
-          <td class="py-3 px-4 text-right tnum font-bold text-notion-text">{{ (float) $item->final_score }}</td>
+          <td class="py-3 px-4 text-right tnum">{{ (int) round((float) $item->objective_score) }}</td>
+          <td class="py-3 px-4 text-right tnum">{{ (int) round((float) $item->essay_score) }}</td>
+          <td class="py-3 px-4 text-right tnum text-notion-gray">{{ $item->manual_score !== null ? (int) round((float) $item->manual_score) : '-' }}</td>
+          <td class="py-3 px-4 text-right tnum font-bold text-notion-text">{{ (int) round((float) $item->final_score) }}</td>
         </tr>
         @empty
         <tr>
@@ -98,14 +98,14 @@
           <p class="text-xs text-notion-gray font-mono">{{ $item->student_nis }} · {{ $item->student_kelas }}</p>
         </div>
         <div class="flex items-center gap-2 shrink-0">
-          <span class="font-bold text-sm tnum">{{ (float) $item->final_score }}</span>
+          <span class="font-bold text-sm tnum">{{ (int) round((float) $item->final_score) }}</span>
           <i data-lucide="chevron-down" id="score-icon-{{ $idx }}" class="w-4 h-4 text-notion-gray transition-transform duration-200"></i>
         </div>
       </div>
       <div id="score-detail-{{ $idx }}" class="hidden px-4 pb-4 space-y-2 bg-notion-sidebar/30 border-t border-notion-border pt-3 text-sm">
-        <div class="flex justify-between"><span class="text-notion-gray">Objektif</span><span class="tnum">{{ (float) $item->objective_score }}</span></div>
-        <div class="flex justify-between"><span class="text-notion-gray">Uraian</span><span class="tnum">{{ (float) $item->essay_score }}</span></div>
-        <div class="flex justify-between"><span class="text-notion-gray">Manual</span><span class="tnum">{{ $item->manual_score !== null ? (float) $item->manual_score : '-' }}</span></div>
+        <div class="flex justify-between"><span class="text-notion-gray">Objektif</span><span class="tnum">{{ (int) round((float) $item->objective_score) }}</span></div>
+        <div class="flex justify-between"><span class="text-notion-gray">Uraian</span><span class="tnum">{{ (int) round((float) $item->essay_score) }}</span></div>
+        <div class="flex justify-between"><span class="text-notion-gray">Manual</span><span class="tnum">{{ $item->manual_score !== null ? (int) round((float) $item->manual_score) : '-' }}</span></div>
         @if($item->teacher_note)
           <div class="text-xs text-notion-gray pt-1 border-t border-notion-border">Catatan: {{ $item->teacher_note }}</div>
         @endif

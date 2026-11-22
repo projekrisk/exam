@@ -198,8 +198,14 @@
 
       <div class="p-4 bg-white border border-notion-border rounded-lg grid grid-cols-1 sm:grid-cols-3 gap-3">
         <div>
-          <label class="block text-sm font-medium mb-1">Input Nilai Manual (Opsional, 0–100)</label>
-          <input type="number" name="manual_score" value="{{ $attempt->manual_score !== null ? (float) $attempt->manual_score : '' }}" min="0" max="100" step="0.01" placeholder="Kosongkan untuk hitung otomatis" {{ $exam->scores_finalized ? 'disabled' : '' }} class="w-full border border-notion-border rounded-md px-3 py-1.5 text-sm tnum bg-white disabled:bg-notion-sidebar">
+          <label class="block text-sm font-medium mb-1">Timpa Nilai Akhir (Opsional, 0–100)</label>
+          <div class="flex items-center gap-1.5">
+            <input type="number" id="manual-score-{{ $idx }}" name="manual_score" value="{{ $attempt->manual_score !== null ? (int) round((float) $attempt->manual_score) : '' }}" min="0" max="100" step="1" placeholder="Kosongkan = Objektif + Uraian" {{ $exam->scores_finalized ? 'disabled' : '' }} class="w-full border border-notion-border rounded-md px-3 py-1.5 text-sm tnum bg-white disabled:bg-notion-sidebar">
+            @if(!$exam->scores_finalized && $attempt->manual_score !== null)
+              <button type="button" onclick="document.getElementById('manual-score-{{ $idx }}').value=''" class="px-2.5 py-1.5 text-xs font-medium border border-notion-border rounded-md bg-notion-sidebar hover:bg-notion-hover text-notion-text shrink-0">Reset</button>
+            @endif
+          </div>
+          <p class="mt-1 text-xs text-amber-700">Biarkan kosong agar Nilai Akhir otomatis = Objektif + Uraian. Mengisi kolom ini akan mengganti total Nilai Akhir.</p>
         </div>
         <div class="sm:col-span-2">
           <label class="block text-sm font-medium mb-1">Catatan Nilai Akhir (Opsional)</label>
