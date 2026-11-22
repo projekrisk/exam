@@ -49,7 +49,7 @@
         $selectedBank = $banks->firstWhere('id', $selectedBankId);
       @endphp
       <input type="hidden" name="question_bank_id" id="exam-bank-id" value="{{ $selectedBankId }}" required>
-      <div id="exam-bank-tag" class="flex flex-wrap gap-1.5 mb-1.5"></div>
+      <div id="exam-bank-tag" class="empty:hidden flex flex-wrap items-center gap-1.5"></div>
       <div id="search-exam-bank-wrap" class="relative">
         <i data-lucide="search" class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-notion-gray pointer-events-none"></i>
         <input type="text" id="search-exam-bank" oninput="filterSearchPicker('search-exam-bank', 'exam-bank-list')" placeholder="Ketik judul bank soal, mapel, atau nama guru..." class="w-full border border-notion-border rounded-md pl-9 pr-3 py-2 text-sm bg-white">
