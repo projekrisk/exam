@@ -55,9 +55,9 @@ class ExamScoringService
             $objectiveEarned += $earned;
         }
 
-        $objectiveNormalized = $totalWeight > 0 ? round(($objectiveEarned / $totalWeight) * 100, 2) : 0.0;
-        $essayNormalized = $totalWeight > 0 ? round(($essayEarned / $totalWeight) * 100, 2) : 0.0;
-        $finalScore = round($objectiveNormalized + $essayNormalized, 2);
+        $objectiveNormalized = $totalWeight > 0 ? (int) round(($objectiveEarned / $totalWeight) * 100) : 0;
+        $essayNormalized = $totalWeight > 0 ? (int) round(($essayEarned / $totalWeight) * 100) : 0;
+        $finalScore = min(100, $totalWeight > 0 ? (int) round((($objectiveEarned + $essayEarned) / $totalWeight) * 100) : 0);
 
         $attempt->update([
             'objective_score' => $objectiveNormalized,

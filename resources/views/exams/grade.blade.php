@@ -54,11 +54,11 @@
           <span class="px-2 py-0.5 rounded bg-notion-hover border border-notion-border text-xs font-medium">{{ $attempt->student->kelas }}</span>
         </div>
         <p class="text-sm text-notion-gray font-mono mt-0.5">
-          NIS: {{ $attempt->student->nis }} • Objektif: {{ (float) $attempt->objective_score }} • Uraian: {{ (float) $attempt->essay_score }} •
+          NIS: {{ $attempt->student->nis }} • Objektif: {{ (int) round((float) $attempt->objective_score) }} • Uraian: {{ (int) round((float) $attempt->essay_score) }} •
           @if($attempt->manual_score !== null)
-            Manual: <strong>{{ (float) $attempt->manual_score }}</strong> •
+            Manual: <strong>{{ (int) round((float) $attempt->manual_score) }}</strong> •
           @endif
-          Nilai Akhir: <strong>{{ (float) $attempt->final_score }}</strong>
+          Nilai Akhir: <strong>{{ (int) round((float) $attempt->final_score) }}</strong>
         </p>
       </div>
       <div class="flex items-center gap-2.5 shrink-0">
@@ -77,6 +77,63 @@
 
     <form id="grade-detail-{{ $idx }}" method="POST" action="{{ route('attempts.grade', $attempt) }}" class="{{ $idx === 0 ? '' : 'hidden' }} p-5 sm:px-6 bg-notion-sidebar/20 border-t border-notion-border space-y-4">
       @csrf
+      @if(isset($objectiveQuestions) && $objectiveQuestions->isNotEmpty())
+        <details class="bg-white border border-notion-border rounded-lg overflow-hidden">
+          <summary class="px-4 py-3 cursor-pointer flex items-center justify-between text-sm font-semibold text-notion-text hover:bg-notion-hover/50">
+            <span>Jawaban Soal Objektif / Pilihan Ganda ({{ $objectiveQuestions->count() }} soal)</span>
+            <span class="text-xs font-mono text-notion-gray">Skor Objektif: {{ (int) round((float) $attempt->objective_score) }}</span>
+          </summary>
+          <div class="divide-y divide-notion-border border-t border-notion-border">
+            @foreach($objectiveQuestions as $oqIdx => $oq)
+              @php
+                $oAns = $attempt->answers->firstWhere('question_id', $oq->id);
+                $oData = $oAns?->answer_data ?? [];
+                $opts = $oq->options ?? [];
+                $earnedPts = (float) ($oAns?->score ?? 0);
+                $maxPts = (float) $oq->weight;
+                $isFullCorrect = $maxPts > 0 && $earnedPts >= $maxPts;
+
+                $studentAnsText = '-';
+                $correctAnsText = '-';
+                if ($oq->type === 'pg') {
+                  $selKey = $oData['selected'] ?? null;
+                  $selOpt = collect($opts)->firstWhere('key', $selKey);
+                  $corOpt = collect($opts)->first(fn ($o) => !empty($o['is_correct']));
+                  $studentAnsText = $selKey ? ($selKey . '. ' . ($selOpt['text'] ?? '')) : '(Tidak dijawab)';
+                  $correctAnsText = $corOpt ? (($corOpt['key'] ?? '') . '. ' . ($corOpt['text'] ?? '')) : '-';
+                } elseif ($oq->type === 'pg_kompleks') {
+                  $selKeys = is_array($oData['selected'] ?? null) ? $oData['selected'] : [];
+                  $corKeys = collect($opts)->filter(fn ($o) => !empty($o['is_correct']))->pluck('key')->all();
+                  $studentAnsText = !empty($selKeys) ? implode(', ', $selKeys) : '(Tidak dijawab)';
+                  $correctAnsText = !empty($corKeys) ? implode(', ', $corKeys) : '-';
+                } elseif ($oq->type === 'benar_salah') {
+                  $resp = is_array($oData['statements'] ?? null) ? $oData['statements'] : [];
+                  $studentAnsText = !empty($resp)
+                    ? collect($resp)->map(fn ($v, $k) => $k . ':' . ($v ? 'B' : 'S'))->implode(', ')
+                    : '(Tidak dijawab)';
+                  $correctAnsText = collect($opts)->map(fn ($o) => ($o['key'] ?? '') . ':' . (!empty($o['correct']) ? 'B' : 'S'))->implode(', ');
+                }
+              @endphp
+              <div class="px-4 py-2.5 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+                <div class="min-w-0 space-y-0.5">
+                  <p class="font-medium text-notion-text">
+                    <span class="text-notion-gray mr-1">#{{ $oqIdx + 1 }}</span>
+                    {{ \Illuminate\Support\Str::limit(strip_tags($oq->question_text), 110) }}
+                  </p>
+                  <p class="text-xs text-notion-gray">
+                    Jawaban Siswa: <strong class="{{ $isFullCorrect ? 'text-emerald-700' : ($earnedPts > 0 ? 'text-amber-700' : 'text-red-600') }}">{{ $studentAnsText }}</strong>
+                    <span class="mx-1.5">•</span>
+                    Kunci: <strong class="text-notion-text">{{ $correctAnsText }}</strong>
+                  </p>
+                </div>
+                <span class="shrink-0 px-2 py-0.5 rounded text-xs font-mono border {{ $isFullCorrect ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : ($earnedPts > 0 ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-red-50 text-red-700 border-red-200') }}">
+                  {{ rtrim(rtrim(number_format($earnedPts, 2, '.', ''), '0'), '.') }} / {{ rtrim(rtrim(number_format($maxPts, 2, '.', ''), '0'), '.') }}
+                </span>
+              </div>
+            @endforeach
+          </div>
+        </details>
+      @endif
       @foreach($essayQuestions as $qIdx => $eq)
         @php
           $ans = $attempt->answers->firstWhere('question_id', $eq->id);

@@ -16,6 +16,25 @@
     <h1 class="text-2xl sm:text-3xl font-bold tracking-tight">{{ $questionBank->title }}</h1>
     <div class="flex flex-wrap items-center gap-1.5 text-sm text-notion-gray">
       <span class="font-medium text-notion-text tnum mr-1">Total {{ $questionBank->questions->count() }} butir soal</span>
+      @php
+        $totalPoints = round((float) $questionBank->questions->sum('weight'), 2);
+        $totalPointsLabel = rtrim(rtrim(number_format($totalPoints, 2, '.', ''), '0'), '.');
+        $diffPoints = round(100 - $totalPoints, 2);
+        $diffPointsLabel = rtrim(rtrim(number_format(abs($diffPoints), 2, '.', ''), '0'), '.');
+        $pointBadgeClass = abs($diffPoints) < 0.01
+          ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+          : ($totalPoints < 100 ? 'bg-amber-50 border-amber-200 text-amber-800' : 'bg-red-50 border-red-200 text-red-700');
+      @endphp
+      <span class="px-2 py-0.5 rounded border text-xs font-semibold tnum {{ $pointBadgeClass }}">
+        Total Poin: {{ $totalPointsLabel }} / 100
+        @if(abs($diffPoints) < 0.01)
+          ✓
+        @elseif($totalPoints < 100)
+          (Kurang {{ $diffPointsLabel }})
+        @else
+          (Lebih {{ $diffPointsLabel }})
+        @endif
+      </span>
       <span class="mr-1">• Target Kelas:</span>
       @php
         $targets = collect($questionBank->target_classes ?? ['ALL'])->sort(SORT_NATURAL | SORT_FLAG_CASE)->values();

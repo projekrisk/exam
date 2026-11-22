@@ -87,14 +87,14 @@ class ScoreFinalizationTest extends TestCase
         $this->actingAs($panitia)->post("/ujian/{$exam->id}/rilis-nilai")->assertRedirect();
         $this->assertTrue($exam->fresh()->scores_released);
 
-        // 3. Guru inputs manual score
+        // 3. Guru inputs manual score (rounded to whole integer)
         $this->actingAs($guru)->post("/sesi-ujian/{$attempt->id}/koreksi", [
             'manual_score' => 92.5,
             'attempt_note' => 'Nilai remedial',
         ])->assertRedirect();
 
-        $this->assertSame(92.5, (float) $attempt->fresh()->final_score);
-        $this->assertSame(92.5, (float) $attempt->fresh()->manual_score);
+        $this->assertSame(93.0, (float) $attempt->fresh()->final_score);
+        $this->assertSame(93.0, (float) $attempt->fresh()->manual_score);
 
         // 4. Guru finalizes & locks scores
         $this->actingAs($guru)->post("/ujian/{$exam->id}/finalisasi-nilai")->assertRedirect();
@@ -104,13 +104,13 @@ class ScoreFinalizationTest extends TestCase
         $this->assertNotNull($archive);
         $this->assertSame($guru->id, $archive->teacher_id);
         $this->assertSame(1, $archive->items()->count());
-        $this->assertSame(92.5, (float) $archive->items()->first()->final_score);
+        $this->assertSame(93.0, (float) $archive->items()->first()->final_score);
 
         // 5. Editing after finalization is blocked
         $this->actingAs($guru)->post("/sesi-ujian/{$attempt->id}/koreksi", [
             'manual_score' => 50,
         ])->assertRedirect();
-        $this->assertSame(92.5, (float) $attempt->fresh()->final_score);
+        $this->assertSame(93.0, (float) $attempt->fresh()->final_score);
 
         // 6. Panitia deletes exam schedule -> archive & items persist!
         $this->actingAs($panitia)->delete("/ujian/{$exam->id}")->assertRedirect();
@@ -122,7 +122,7 @@ class ScoreFinalizationTest extends TestCase
 
         // 7. Guru (pembuat soal) & Panitia can access Daftar Nilai; unrelated Guru gets 403
         $this->actingAs($guru)->get('/daftar-nilai')->assertOk()->assertSee('UAS Matematika');
-        $this->actingAs($guru)->get("/daftar-nilai/{$archive->id}")->assertOk()->assertSee('Siswa Uji')->assertSee('92.5');
+        $this->actingAs($guru)->get("/daftar-nilai/{$archive->id}")->assertOk()->assertSee('Siswa Uji')->assertSee('93');
         $this->actingAs($panitia)->get('/daftar-nilai')->assertOk()->assertSee('UAS Matematika');
         $this->actingAs($panitia)->get("/daftar-nilai/{$archive->id}")->assertOk()->assertSee('Siswa Uji');
         $this->actingAs($otherGuru)->get("/daftar-nilai/{$archive->id}")->assertForbidden();

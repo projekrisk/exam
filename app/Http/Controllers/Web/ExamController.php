@@ -411,16 +411,18 @@ class ExamController extends Controller
             return redirect()->route('exams.index')->with('toast_error', 'Panitia belum merilis nilai ujian ini.');
         }
         $exam->load(['subject', 'questionBank.questions', 'scoreArchive']);
-        $essayQuestions = $exam->questionBank->questions->where('type', 'uraian')->values();
+        $allQuestions = $exam->questionBank->questions;
+        $objectiveQuestions = $allQuestions->where('type', '!=', 'uraian')->values();
+        $essayQuestions = $allQuestions->where('type', 'uraian')->values();
 
-        $attempts = ExamAttempt::with(['student', 'answers' => fn ($q) => $q->whereIn('question_id', $essayQuestions->pluck('id'))])
+        $attempts = ExamAttempt::with(['student', 'answers'])
             ->where('exam_id', $exam->id)
             ->whereIn('status', ['submitted', 'auto_submitted'])
             ->orderBy('grading_status')
             ->orderBy('id')
             ->get();
 
-        return view('exams.grade', compact('exam', 'essayQuestions', 'attempts'));
+        return view('exams.grade', compact('exam', 'objectiveQuestions', 'essayQuestions', 'attempts'));
     }
 
     public function saveEssayGrade(Request $request, ExamAttempt $attempt, ExamScoringService $scoringService): RedirectResponse
@@ -459,9 +461,10 @@ class ExamController extends Controller
         $scoringService->gradeAttempt($attempt);
 
         $hasManualScore = isset($validated['manual_score']) && $validated['manual_score'] !== null && $validated['manual_score'] !== '';
+        $manualInt = $hasManualScore ? min(100, max(0, (int) round((float) $validated['manual_score']))) : null;
         $attempt->update([
-            'manual_score' => $hasManualScore ? (float) $validated['manual_score'] : null,
-            'final_score' => $hasManualScore ? (float) $validated['manual_score'] : $attempt->fresh()->final_score,
+            'manual_score' => $manualInt,
+            'final_score' => $hasManualScore ? $manualInt : $attempt->fresh()->final_score,
             'grading_status' => 'final',
             'teacher_note' => $validated['attempt_note'] ?? null,
         ]);

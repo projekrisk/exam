@@ -61,7 +61,8 @@ class StudentExamController extends Controller
                     'id' => $attempt->id,
                     'status' => $attempt->status,
                     'receipt_code' => $attempt->receipt_code,
-                    'final_score' => ($exam->scores_released || $exam->show_score) && $attempt->grading_status === 'final' ? (float) $attempt->final_score : null,
+                    'final_score' => ($exam->scores_released || $exam->show_score) && $attempt->grading_status === 'final' ? (int) round((float) $attempt->final_score) : null,
+                    'can_review' => in_array($attempt->status, ['submitted', 'auto_submitted'], true) && ($exam->scores_released || $exam->show_score),
                 ] : null,
             ];
         });
@@ -74,6 +75,61 @@ class StudentExamController extends Controller
             'server_time_ms' => $now->getTimestampMs(),
             'exams' => $data,
             'blacklisted_apps' => $blacklistedApps,
+        ]);
+    }
+
+    public function review(Request $request, Exam $exam): JsonResponse
+    {
+        $student = $request->user();
+
+        if (! $exam->isAvailableForClass($student->kelas)) {
+            return response()->json(['message' => 'Ujian ini bukan untuk kelas Anda.'], 403);
+        }
+
+        $attempt = ExamAttempt::where('exam_id', $exam->id)
+            ->where('student_id', $student->id)
+            ->first();
+
+        if (! $attempt || ! in_array($attempt->status, ['submitted', 'auto_submitted'], true)) {
+            return response()->json(['message' => 'Anda belum menyelesaikan ujian ini.'], 403);
+        }
+
+        if (! ($exam->scores_released || $exam->show_score)) {
+            return response()->json(['message' => 'Nilai dan pembahasan ujian belum ditampilkan oleh pengawas/guru.'], 403);
+        }
+
+        $exam->loadMissing('subject:id,name');
+        $questions = $this->getCachedBankQuestions($exam->question_bank_id);
+        $answers = ExamAnswer::where('attempt_id', $attempt->id)->get()->keyBy('question_id');
+
+        $reviewQuestions = $questions->map(function ($q) use ($answers) {
+            $ans = $answers->get($q->id);
+
+            return [
+                'id' => $q->id,
+                'type' => $q->type,
+                'question_text' => $q->question_text,
+                'media_url' => $q->media_path ? asset('uploads/soal/' . $q->media_path) : null,
+                'weight' => (float) $q->weight,
+                'options' => $q->options ?? [],
+                'student_answer' => $ans ? [
+                    'answer_data' => $ans->answer_data,
+                    'score' => (float) $ans->score,
+                    'is_graded' => (bool) $ans->is_graded,
+                    'teacher_note' => $ans->teacher_note,
+                ] : null,
+            ];
+        })->values();
+
+        return response()->json([
+            'exam_id' => $exam->id,
+            'title' => $exam->title,
+            'subject' => $exam->subject?->name,
+            'grading_status' => $attempt->grading_status,
+            'objective_score' => (int) round((float) $attempt->objective_score),
+            'essay_score' => (int) round((float) $attempt->essay_score),
+            'final_score' => (int) round((float) $attempt->final_score),
+            'questions' => $reviewQuestions,
         ]);
     }
 
@@ -307,8 +363,8 @@ class StudentExamController extends Controller
             'submitted_at' => $graded->submitted_at?->toIso8601String(),
             'grading_status' => $graded->grading_status,
             'show_score' => $exam->scores_released || $exam->show_score,
-            'objective_score' => ($exam->scores_released || $exam->show_score) ? (float) $graded->objective_score : null,
-            'final_score' => ($exam->scores_released || $exam->show_score) && $graded->grading_status === 'final' ? (float) $graded->final_score : null,
+            'objective_score' => ($exam->scores_released || $exam->show_score) ? (int) round((float) $graded->objective_score) : null,
+            'final_score' => ($exam->scores_released || $exam->show_score) && $graded->grading_status === 'final' ? (int) round((float) $graded->final_score) : null,
         ]);
     }
 
