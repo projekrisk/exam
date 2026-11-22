@@ -78,12 +78,12 @@
     <form id="grade-detail-{{ $idx }}" method="POST" action="{{ route('attempts.grade', $attempt) }}" class="{{ $idx === 0 ? '' : 'hidden' }} p-5 sm:px-6 bg-notion-sidebar/20 border-t border-notion-border space-y-4">
       @csrf
       @if(isset($objectiveQuestions) && $objectiveQuestions->isNotEmpty())
-        <details class="bg-white border border-notion-border rounded-lg overflow-hidden">
-          <summary class="px-4 py-3 cursor-pointer flex items-center justify-between text-sm font-semibold text-notion-text hover:bg-notion-hover/50">
-            <span>Jawaban Soal Objektif / Pilihan Ganda ({{ $objectiveQuestions->count() }} soal)</span>
+        <div class="bg-white border border-notion-border rounded-lg overflow-hidden">
+          <div class="px-4 py-3 bg-notion-sidebar/40 flex flex-wrap items-center justify-between gap-2 text-sm font-semibold text-notion-text border-b border-notion-border">
+            <span>Jawaban Pilihan Ganda / Objektif ({{ $objectiveQuestions->count() }} soal · Hanya Baca)</span>
             <span class="text-xs font-mono text-notion-gray">Skor Objektif: {{ (int) round((float) $attempt->objective_score) }}</span>
-          </summary>
-          <div class="divide-y divide-notion-border border-t border-notion-border">
+          </div>
+          <div class="divide-y divide-notion-border">
             @foreach($objectiveQuestions as $oqIdx => $oq)
               @php
                 $oAns = $attempt->answers->firstWhere('question_id', $oq->id);
@@ -92,47 +92,75 @@
                 $earnedPts = (float) ($oAns?->score ?? 0);
                 $maxPts = (float) $oq->weight;
                 $isFullCorrect = $maxPts > 0 && $earnedPts >= $maxPts;
+                $isPartial = ! $isFullCorrect && $earnedPts > 0;
 
-                $studentAnsText = '-';
-                $correctAnsText = '-';
-                if ($oq->type === 'pg') {
-                  $selKey = $oData['selected'] ?? null;
-                  $selOpt = collect($opts)->firstWhere('key', $selKey);
-                  $corOpt = collect($opts)->first(fn ($o) => !empty($o['is_correct']));
-                  $studentAnsText = $selKey ? ($selKey . '. ' . ($selOpt['text'] ?? '')) : '(Tidak dijawab)';
-                  $correctAnsText = $corOpt ? (($corOpt['key'] ?? '') . '. ' . ($corOpt['text'] ?? '')) : '-';
-                } elseif ($oq->type === 'pg_kompleks') {
-                  $selKeys = is_array($oData['selected'] ?? null) ? $oData['selected'] : [];
-                  $corKeys = collect($opts)->filter(fn ($o) => !empty($o['is_correct']))->pluck('key')->all();
-                  $studentAnsText = !empty($selKeys) ? implode(', ', $selKeys) : '(Tidak dijawab)';
-                  $correctAnsText = !empty($corKeys) ? implode(', ', $corKeys) : '-';
-                } elseif ($oq->type === 'benar_salah') {
-                  $resp = is_array($oData['statements'] ?? null) ? $oData['statements'] : [];
-                  $studentAnsText = !empty($resp)
-                    ? collect($resp)->map(fn ($v, $k) => $k . ':' . ($v ? 'B' : 'S'))->implode(', ')
-                    : '(Tidak dijawab)';
-                  $correctAnsText = collect($opts)->map(fn ($o) => ($o['key'] ?? '') . ':' . (!empty($o['correct']) ? 'B' : 'S'))->implode(', ');
-                }
+                $statusLabel = $isFullCorrect ? 'Benar' : ($isPartial ? 'Sebagian' : 'Salah');
+                $statusClass = $isFullCorrect
+                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                  : ($isPartial ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-red-50 text-red-700 border-red-200');
               @endphp
-              <div class="px-4 py-2.5 text-sm flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-                <div class="min-w-0 space-y-0.5">
-                  <p class="font-medium text-notion-text">
-                    <span class="text-notion-gray mr-1">#{{ $oqIdx + 1 }}</span>
-                    {{ \Illuminate\Support\Str::limit(strip_tags($oq->question_text), 110) }}
+              <div class="p-4 text-sm space-y-2.5">
+                <div class="flex flex-wrap items-start justify-between gap-2">
+                  <p class="font-semibold text-notion-text flex-1 min-w-0">
+                    <span class="text-notion-gray mr-1">Soal #{{ $oqIdx + 1 }}:</span>
+                    {{ $oq->question_text }}
                   </p>
-                  <p class="text-xs text-notion-gray">
-                    Jawaban Siswa: <strong class="{{ $isFullCorrect ? 'text-emerald-700' : ($earnedPts > 0 ? 'text-amber-700' : 'text-red-600') }}">{{ $studentAnsText }}</strong>
-                    <span class="mx-1.5">•</span>
-                    Kunci: <strong class="text-notion-text">{{ $correctAnsText }}</strong>
-                  </p>
+                  <div class="flex items-center gap-1.5 shrink-0">
+                    <span class="px-2 py-0.5 rounded text-xs font-semibold border {{ $statusClass }}">{{ $statusLabel }}</span>
+                    <span class="px-2 py-0.5 rounded text-xs font-mono border border-notion-border bg-notion-sidebar/50 text-notion-text">
+                      {{ rtrim(rtrim(number_format($earnedPts, 2, '.', ''), '0'), '.') }} / {{ rtrim(rtrim(number_format($maxPts, 2, '.', ''), '0'), '.') }}
+                    </span>
+                  </div>
                 </div>
-                <span class="shrink-0 px-2 py-0.5 rounded text-xs font-mono border {{ $isFullCorrect ? 'bg-emerald-50 text-emerald-700 border-emerald-200' : ($earnedPts > 0 ? 'bg-amber-50 text-amber-800 border-amber-200' : 'bg-red-50 text-red-700 border-red-200') }}">
-                  {{ rtrim(rtrim(number_format($earnedPts, 2, '.', ''), '0'), '.') }} / {{ rtrim(rtrim(number_format($maxPts, 2, '.', ''), '0'), '.') }}
-                </span>
+
+                @if($oq->type === 'pg')
+                  @php $selKey = $oData['selected'] ?? null; @endphp
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-1.5 text-xs">
+                    @foreach($opts as $opt)
+                      @php
+                        $k = $opt['key'] ?? '';
+                        $isCor = !empty($opt['is_correct']);
+                        $isSel = $selKey === $k;
+                        $optClass = $isCor
+                          ? 'bg-emerald-50 border-emerald-200 text-emerald-900'
+                          : ($isSel ? 'bg-red-50 border-red-200 text-red-900' : 'bg-notion-sidebar/30 border-notion-border text-notion-gray');
+                      @endphp
+                      <div class="px-2.5 py-1.5 rounded border flex items-center justify-between gap-2 {{ $optClass }}">
+                        <span class="min-w-0"><strong class="mr-1">{{ $k }}.</strong>{{ $opt['text'] ?? '' }}</span>
+                        <span class="shrink-0 font-semibold">
+                          @if($isSel && $isCor) Dipilih (Benar)
+                          @elseif($isSel) Dipilih (Salah)
+                          @elseif($isCor) Kunci
+                          @endif
+                        </span>
+                      </div>
+                    @endforeach
+                  </div>
+                  @if(!$selKey)
+                    <p class="text-xs text-red-600 font-medium">Siswa tidak memilih jawaban.</p>
+                  @endif
+                @elseif($oq->type === 'pg_kompleks')
+                  @php
+                    $selKeys = is_array($oData['selected'] ?? null) ? $oData['selected'] : [];
+                    $corKeys = collect($opts)->filter(fn ($o) => !empty($o['is_correct']))->pluck('key')->all();
+                  @endphp
+                  <p class="text-xs text-notion-gray">
+                    Dipilih Siswa: <strong class="{{ $isFullCorrect ? 'text-emerald-700' : 'text-red-600' }}">{{ !empty($selKeys) ? implode(', ', $selKeys) : '(Tidak dijawab)' }}</strong>
+                    <span class="mx-1.5">•</span>
+                    Kunci: <strong class="text-notion-text">{{ !empty($corKeys) ? implode(', ', $corKeys) : '-' }}</strong>
+                  </p>
+                @elseif($oq->type === 'benar_salah')
+                  @php $resp = is_array($oData['statements'] ?? null) ? $oData['statements'] : []; @endphp
+                  <p class="text-xs text-notion-gray">
+                    Dipilih Siswa: <strong class="{{ $isFullCorrect ? 'text-emerald-700' : 'text-red-600' }}">{{ !empty($resp) ? collect($resp)->map(fn ($v, $k) => $k . ':' . ($v ? 'B' : 'S'))->implode(', ') : '(Tidak dijawab)' }}</strong>
+                    <span class="mx-1.5">•</span>
+                    Kunci: <strong class="text-notion-text">{{ collect($opts)->map(fn ($o) => ($o['key'] ?? '') . ':' . (!empty($o['correct']) ? 'B' : 'S'))->implode(', ') }}</strong>
+                  </p>
+                @endif
               </div>
             @endforeach
           </div>
-        </details>
+        </div>
       @endif
       @foreach($essayQuestions as $qIdx => $eq)
         @php
