@@ -104,9 +104,9 @@
                   $isFinished = $examStatus === 'finished';
                   $isScheduleCreator = (int) $exam->created_by === (int) auth()->id();
                   $isGuruLockedBeforeRelease = auth()->user()->isGuru() && ! $exam->scores_released;
-                  $canEditSchedule = $isScheduleCreator && (auth()->user()->isAdmin()
+                  $canEditSchedule = auth()->user()->isSuperAdmin() || ($isScheduleCreator && (auth()->user()->isAdmin()
                     ? in_array($examStatus, ['draft', 'waiting', 'finished'], true)
-                    : ($isFinished && ! $isGuruLockedBeforeRelease));
+                    : ($isFinished && ! $isGuruLockedBeforeRelease)));
                   $canGradeAndExport = $isFinished && ! $isGuruLockedBeforeRelease;
                 @endphp
                 @if($canEditSchedule)
@@ -188,9 +188,9 @@
               $mobileStatus = $exam->effectiveStatus();
               $mobileCreator = (int) $exam->created_by === (int) auth()->id();
               $mobileGuruLocked = auth()->user()->isGuru() && ! $exam->scores_released;
-              $canEditMobile = $mobileCreator && (auth()->user()->isAdmin()
+              $canEditMobile = auth()->user()->isSuperAdmin() || ($mobileCreator && (auth()->user()->isAdmin()
                 ? in_array($mobileStatus, ['draft', 'waiting', 'finished'], true)
-                : ($mobileStatus === 'finished' && ! $mobileGuruLocked));
+                : ($mobileStatus === 'finished' && ! $mobileGuruLocked)));
               $canGradeExportMobile = $mobileStatus === 'finished' && ! $mobileGuruLocked;
             @endphp
             @if($canEditMobile)

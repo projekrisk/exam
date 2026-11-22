@@ -101,23 +101,25 @@ class ExamController extends Controller
         $user = $request->user();
         $this->authorizeExamAccess($request, $exam);
 
-        if ((int) $exam->created_by !== (int) $user->id) {
-            return redirect()->route('exams.index')->with('toast_error', 'Hanya pembuat jadwal ujian yang dapat mengedit jadwal ini.');
-        }
+        if (! $user->isSuperAdmin()) {
+            if ((int) $exam->created_by !== (int) $user->id) {
+                return redirect()->route('exams.index')->with('toast_error', 'Hanya pembuat jadwal ujian yang dapat mengedit jadwal ini.');
+            }
 
-        $status = $exam->effectiveStatus();
-        $canEdit = $user->isAdmin()
-            ? in_array($status, ['draft', 'waiting', 'finished'], true)
-            : ($status === 'finished' && $exam->scores_released);
+            $status = $exam->effectiveStatus();
+            $canEdit = $user->isAdmin()
+                ? in_array($status, ['draft', 'waiting', 'finished'], true)
+                : ($status === 'finished' && $exam->scores_released);
 
-        if (! $canEdit) {
-            $msg = match (true) {
-                $status === 'ongoing' => 'Ujian sedang berlangsung sehingga jadwal tidak dapat diedit.',
-                $user->isGuru() && $status === 'finished' && ! $exam->scores_released => 'Panitia belum merilis nilai ujian ini.',
-                default => 'Ujian belum selesai sehingga jadwal tidak dapat diedit.',
-            };
+            if (! $canEdit) {
+                $msg = match (true) {
+                    $status === 'ongoing' => 'Ujian sedang berlangsung sehingga jadwal tidak dapat diedit.',
+                    $user->isGuru() && $status === 'finished' && ! $exam->scores_released => 'Panitia belum merilis nilai ujian ini.',
+                    default => 'Ujian belum selesai sehingga jadwal tidak dapat diedit.',
+                };
 
-            return redirect()->route('exams.index')->with('toast_error', $msg);
+                return redirect()->route('exams.index')->with('toast_error', $msg);
+            }
         }
 
         $banks = $this->availableBanks($user, $exam->id);
@@ -194,23 +196,25 @@ class ExamController extends Controller
         $user = $request->user();
         $this->authorizeExamAccess($request, $exam);
 
-        if ((int) $exam->created_by !== (int) $user->id) {
-            return redirect()->route('exams.index')->with('toast_error', 'Hanya pembuat jadwal ujian yang dapat mengubah jadwal ini.');
-        }
+        if (! $user->isSuperAdmin()) {
+            if ((int) $exam->created_by !== (int) $user->id) {
+                return redirect()->route('exams.index')->with('toast_error', 'Hanya pembuat jadwal ujian yang dapat mengubah jadwal ini.');
+            }
 
-        $status = $exam->effectiveStatus();
-        $canEdit = $user->isAdmin()
-            ? in_array($status, ['draft', 'waiting', 'finished'], true)
-            : ($status === 'finished' && $exam->scores_released);
+            $status = $exam->effectiveStatus();
+            $canEdit = $user->isAdmin()
+                ? in_array($status, ['draft', 'waiting', 'finished'], true)
+                : ($status === 'finished' && $exam->scores_released);
 
-        if (! $canEdit) {
-            $msg = match (true) {
-                $status === 'ongoing' => 'Ujian sedang berlangsung sehingga jadwal tidak dapat diubah.',
-                $user->isGuru() && $status === 'finished' && ! $exam->scores_released => 'Panitia belum merilis nilai ujian ini.',
-                default => 'Ujian belum selesai sehingga jadwal tidak dapat diubah.',
-            };
+            if (! $canEdit) {
+                $msg = match (true) {
+                    $status === 'ongoing' => 'Ujian sedang berlangsung sehingga jadwal tidak dapat diubah.',
+                    $user->isGuru() && $status === 'finished' && ! $exam->scores_released => 'Panitia belum merilis nilai ujian ini.',
+                    default => 'Ujian belum selesai sehingga jadwal tidak dapat diubah.',
+                };
 
-            return redirect()->route('exams.index')->with('toast_error', $msg);
+                return redirect()->route('exams.index')->with('toast_error', $msg);
+            }
         }
 
         $validated = $request->validate([
