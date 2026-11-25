@@ -80,10 +80,14 @@
   </div>
 </div>
 
-<div class="grid grid-cols-2 sm:grid-cols-4 gap-4">
+<div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
   <div class="bg-white border border-notion-border rounded-lg p-4">
-    <p class="text-sm text-notion-gray">Total Masuk</p>
+    <p class="text-sm text-notion-gray">Total Target Peserta</p>
     <p class="text-2xl font-bold tnum mt-1">{{ $summary['total'] }}</p>
+  </div>
+  <div class="bg-white border border-notion-border rounded-lg p-4">
+    <p class="text-sm text-notion-gray">Belum Mulai</p>
+    <p class="text-2xl font-bold text-notion-gray tnum mt-1">{{ $summary['not_started'] }}</p>
   </div>
   <div class="bg-white border border-notion-border rounded-lg p-4">
     <p class="text-sm text-notion-gray">Sedang Mengerjakan</p>
@@ -108,7 +112,17 @@
              class="w-full border border-notion-border rounded-md pl-9 pr-3 py-2 text-sm focus:outline-none focus:border-notion-blue">
     </div>
   </div>
-  <div class="w-full sm:w-44">
+  <div class="w-full sm:w-40">
+    <label class="block text-xs font-medium text-notion-gray mb-1">Status</label>
+    <select name="status" class="modern-select w-full">
+      <option value="">Semua Status</option>
+      <option value="not_started" {{ ($statusFilter ?? '') === 'not_started' ? 'selected' : '' }}>Belum Mulai</option>
+      <option value="in_progress" {{ ($statusFilter ?? '') === 'in_progress' ? 'selected' : '' }}>Mengerjakan</option>
+      <option value="locked" {{ ($statusFilter ?? '') === 'locked' ? 'selected' : '' }}>Terkunci</option>
+      <option value="submitted" {{ ($statusFilter ?? '') === 'submitted' ? 'selected' : '' }}>Selesai</option>
+    </select>
+  </div>
+  <div class="w-full sm:w-40">
     <label class="block text-xs font-medium text-notion-gray mb-1">Kelas</label>
     <select name="kelas" class="modern-select w-full">
       <option value="">Semua Kelas</option>
@@ -117,7 +131,7 @@
       @endforeach
     </select>
   </div>
-  <div class="w-full sm:w-44">
+  <div class="w-full sm:w-40">
     <label class="block text-xs font-medium text-notion-gray mb-1">Ruang</label>
     <select name="ruang" class="modern-select w-full">
       <option value="">Semua Ruang</option>
@@ -130,7 +144,7 @@
     <button type="submit" class="w-full sm:w-auto px-4 py-2 bg-notion-blue text-white rounded-md text-sm font-medium hover:bg-notion-blueHover transition-colors">
       Terapkan
     </button>
-    @if($search !== '' || $kelas !== '' || $ruang !== '')
+    @if($search !== '' || $kelas !== '' || $ruang !== '' || ($statusFilter ?? '') !== '')
       <a href="{{ route('exams.monitor', $exam) }}" class="px-3 py-2 bg-white border border-notion-border rounded-md text-sm text-notion-gray hover:bg-notion-hover transition-colors">
         Reset
       </a>
@@ -154,19 +168,20 @@
         </tr>
       </thead>
       <tbody class="divide-y divide-notion-border">
-        @forelse($attempts as $att)
+        @forelse($students as $student)
         @php
-          $answered = (int) ($att->answered_count ?? 0);
+          $att = $attemptsByStudent->get($student->id);
+          $answered = (int) ($att?->answered_count ?? 0);
           $pct = $totalQuestions > 0 ? min(100, (int) round(($answered / $totalQuestions) * 100)) : 0;
         @endphp
         <tr class="hover:bg-notion-hover/50">
           <td class="py-3 px-4">
-            <p class="font-semibold">{{ $att->student->name }}</p>
-            <p class="text-sm text-notion-gray font-mono">NIS: {{ $att->student->nis }}</p>
+            <p class="font-semibold">{{ $student->name }}</p>
+            <p class="text-sm text-notion-gray font-mono">NIS: {{ $student->nis }}</p>
           </td>
           <td class="py-3 px-4 text-notion-gray">
-            <p class="text-notion-text font-medium">{{ $att->student->kelas }}</p>
-            <p class="text-xs text-notion-gray">{{ $att->student->ruang ?: '-' }}</p>
+            <p class="text-notion-text font-medium">{{ $student->kelas }}</p>
+            <p class="text-xs text-notion-gray">{{ $student->ruang ?: '-' }}</p>
           </td>
           <td class="py-3 px-4 min-w-[160px]">
             <div class="flex items-center justify-between text-xs mb-1">
@@ -178,21 +193,32 @@
             </div>
           </td>
           <td class="py-3 px-4">
-            @if($att->status === 'in_progress')
+            @if(!$att)
+              <span class="px-2.5 py-0.5 rounded text-sm font-medium bg-notion-hover text-notion-gray border border-notion-border">Belum Mulai</span>
+            @elseif($att->status === 'in_progress')
               <span class="px-2.5 py-0.5 rounded text-sm font-medium bg-blue-50 text-notion-blue border border-blue-200">Mengerjakan</span>
             @elseif($att->status === 'locked')
               <span class="px-2.5 py-0.5 rounded text-sm font-medium bg-notion-redBg text-notion-red border border-red-200">Terkunci</span>
             @else
-              <span class="px-2.5 py-0.5 rounded text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Selesai ({{ $att->final_score }})</span>
+              <span class="px-2.5 py-0.5 rounded text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200">Selesai ({{ (int) round((float) $att->final_score) }})</span>
             @endif
           </td>
-          <td class="py-3 px-4 text-center tnum {{ $att->violation_count > 0 ? 'text-notion-red font-bold' : 'text-notion-gray' }}">
-            {{ $att->violation_count }} / {{ $exam->max_violations }}
+          <td class="py-3 px-4 text-center tnum {{ ($att?->violation_count ?? 0) > 0 ? 'text-notion-red font-bold' : 'text-notion-gray' }}">
+            @if($att)
+              {{ $att->violation_count }} / {{ $exam->max_violations }}
+            @else
+              -
+            @endif
           </td>
           <td class="py-3 px-4 text-sm text-notion-gray tnum">
-            {{ $att->last_sync_at ? $att->last_sync_at->diffForHumans() : 'Belum sync' }}
+            @if(!$att)
+              Belum login
+            @else
+              {{ $att->last_sync_at ? $att->last_sync_at->diffForHumans() : 'Belum sync' }}
+            @endif
           </td>
           <td class="py-3 px-4 text-right">
+            @if($att)
             <div class="relative inline-block text-left">
               <button type="button" onclick="toggleMonitorMenu(event, 'mon-menu-{{ $att->id }}')" class="p-1.5 rounded-md border border-notion-border bg-white hover:bg-notion-hover text-notion-gray transition-colors" title="Menu Aksi">
                 <i data-lucide="more-vertical" class="w-4 h-4"></i>
@@ -213,7 +239,7 @@
                   </button>
                 </form>
                 @endif
-                <form method="POST" action="{{ route('attempts.force-submit', $att) }}" onsubmit="return handleConfirmSubmit(event, 'Paksa selesaikan ujian {{ $att->student->name }} sekarang?', 'Konfirmasi Paksa Selesai', 'Ya, Selesaikan')">
+                <form method="POST" action="{{ route('attempts.force-submit', $att) }}" onsubmit="return handleConfirmSubmit(event, 'Paksa selesaikan ujian {{ $student->name }} sekarang?', 'Konfirmasi Paksa Selesai', 'Ya, Selesaikan')">
                   @csrf
                   <button type="submit" class="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-notion-red hover:bg-notion-redBg transition-colors">
                     <i data-lucide="log-out" class="w-4 h-4"></i> Paksa Selesai
@@ -227,6 +253,9 @@
                 @endif
               </div>
             </div>
+            @else
+              <span class="text-xs text-notion-gray">-</span>
+            @endif
           </td>
         </tr>
         @empty
@@ -239,23 +268,24 @@
   </div>
 
   <div class="md:hidden divide-y divide-notion-border">
-    @forelse($attempts as $idx => $att)
+    @forelse($students as $idx => $student)
     @php
-      $answered = (int) ($att->answered_count ?? 0);
+      $att = $attemptsByStudent->get($student->id);
+      $answered = (int) ($att?->answered_count ?? 0);
       $pct = $totalQuestions > 0 ? min(100, (int) round(($answered / $totalQuestions) * 100)) : 0;
     @endphp
     <div class="bg-white flex flex-col">
       <div onclick="toggleMobileRow('mon', {{ $idx }})" class="p-4 flex items-center justify-between cursor-pointer hover:bg-notion-hover/50">
         <div>
-          <p class="font-semibold text-sm">{{ $att->student->name }}</p>
-          <p class="text-sm text-notion-gray">{{ $att->student->kelas }}{{ $att->student->ruang ? ' • ' . $att->student->ruang : '' }} • {{ $answered }}/{{ $totalQuestions }} soal ({{ $pct }}%)</p>
+          <p class="font-semibold text-sm">{{ $student->name }}</p>
+          <p class="text-sm text-notion-gray">{{ $student->kelas }}{{ $student->ruang ? ' • ' . $student->ruang : '' }} • {{ !$att ? 'Belum Mulai' : ($answered . '/' . $totalQuestions . ' soal (' . $pct . '%)') }}</p>
         </div>
         <i data-lucide="chevron-down" id="mon-icon-{{ $idx }}" class="w-4 h-4 text-notion-gray transition-transform duration-200 shrink-0"></i>
       </div>
       <div id="mon-detail-{{ $idx }}" class="hidden px-4 pb-4 space-y-2.5 bg-notion-sidebar/30 border-t border-notion-border pt-3 text-sm">
         <div class="flex justify-between items-center">
           <span class="text-notion-gray">Status</span>
-          <span class="font-medium">{{ $att->status === 'in_progress' ? 'Mengerjakan' : ($att->status === 'locked' ? 'Terkunci' : 'Selesai') }}</span>
+          <span class="font-medium">{{ !$att ? 'Belum Mulai' : ($att->status === 'in_progress' ? 'Mengerjakan' : ($att->status === 'locked' ? 'Terkunci' : 'Selesai')) }}</span>
         </div>
         <div class="flex justify-between items-center">
           <span class="text-notion-gray">Progres</span>
@@ -263,19 +293,19 @@
         </div>
         <div class="flex justify-between items-center">
           <span class="text-notion-gray">Pelanggaran</span>
-          <span class="font-semibold tnum">{{ $att->violation_count }} / {{ $exam->max_violations }}</span>
+          <span class="font-semibold tnum">{{ $att ? ($att->violation_count . ' / ' . $exam->max_violations) : '-' }}</span>
         </div>
         <div class="flex justify-between items-center">
           <span class="text-notion-gray">Sinkron</span>
-          <span>{{ $att->last_sync_at ? $att->last_sync_at->diffForHumans() : 'Belum sync' }}</span>
+          <span>{{ !$att ? 'Belum login' : ($att->last_sync_at ? $att->last_sync_at->diffForHumans() : 'Belum sync') }}</span>
         </div>
-        @if(!in_array($att->status, ['submitted', 'auto_submitted']))
+        @if($att && !in_array($att->status, ['submitted', 'auto_submitted']))
         <div class="pt-2 border-t border-notion-border flex flex-wrap justify-end gap-2">
           <form method="POST" action="{{ route('attempts.reset-device', $att) }}">@csrf<button type="submit" class="px-3 py-1.5 bg-white border border-notion-border rounded text-sm">Reset Login</button></form>
           @if($att->status === 'locked')
           <form method="POST" action="{{ route('attempts.unlock', $att) }}">@csrf<button type="submit" class="px-3 py-1.5 bg-amber-50 border border-amber-200 text-amber-800 rounded text-sm">Unlock</button></form>
           @endif
-          <form method="POST" action="{{ route('attempts.force-submit', $att) }}" onsubmit="return handleConfirmSubmit(event, 'Paksa selesaikan ujian {{ $att->student->name }} sekarang?', 'Konfirmasi Paksa Selesai', 'Ya, Selesaikan')">@csrf<button type="submit" class="px-3 py-1.5 bg-notion-redBg text-notion-red rounded text-sm">Paksa Selesai</button></form>
+          <form method="POST" action="{{ route('attempts.force-submit', $att) }}" onsubmit="return handleConfirmSubmit(event, 'Paksa selesaikan ujian {{ $student->name }} sekarang?', 'Konfirmasi Paksa Selesai', 'Ya, Selesaikan')">@csrf<button type="submit" class="px-3 py-1.5 bg-notion-redBg text-notion-red rounded text-sm">Paksa Selesai</button></form>
         </div>
         @endif
       </div>
@@ -285,7 +315,7 @@
     @endforelse
   </div>
 
-  <x-simple-pagination :paginator="$attempts" />
+  <x-simple-pagination :paginator="$students" />
 </div>
 
 @push('scripts')

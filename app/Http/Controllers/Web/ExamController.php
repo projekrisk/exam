@@ -331,47 +331,98 @@ class ExamController extends Controller
 
         $totalQuestions = $exam->questionBank ? $exam->questionBank->questions()->count() : 0;
 
-        $baseQuery = ExamAttempt::where('exam_id', $exam->id);
+        $allActiveClasses = Student::where('is_active', true)
+            ->whereNotNull('kelas')
+            ->where('kelas', '!=', '')
+            ->distinct()
+            ->pluck('kelas');
+        $targetClasses = $allActiveClasses
+            ->filter(fn (string $c) => $exam->isAvailableForClass($c))
+            ->sort(fn (string $a, string $b) => $this->compareClassNames($a, $b))
+            ->values();
+
+        $baseAttemptQuery = ExamAttempt::where('exam_id', $exam->id);
+        $attemptStudentIds = (clone $baseAttemptQuery)->pluck('student_id');
+
+        $targetStudentsBase = Student::query()->where(function ($q) use ($targetClasses, $attemptStudentIds) {
+            $q->where(function ($sq) use ($targetClasses) {
+                $sq->where('is_active', true);
+                if ($targetClasses->isNotEmpty()) {
+                    $sq->whereIn('kelas', $targetClasses);
+                } else {
+                    $sq->whereRaw('1 = 0');
+                }
+            });
+            if ($attemptStudentIds->isNotEmpty()) {
+                $q->orWhereIn('id', $attemptStudentIds);
+            }
+        });
+
+        $totalTarget = (clone $targetStudentsBase)->count();
+        $startedCount = $attemptStudentIds->unique()->count();
         $summary = [
-            'total' => (clone $baseQuery)->count(),
-            'in_progress' => (clone $baseQuery)->where('status', 'in_progress')->count(),
-            'locked' => (clone $baseQuery)->where('status', 'locked')->count(),
-            'submitted' => (clone $baseQuery)->whereIn('status', ['submitted', 'auto_submitted'])->count(),
+            'total' => $totalTarget,
+            'not_started' => max(0, $totalTarget - $startedCount),
+            'in_progress' => (clone $baseAttemptQuery)->where('status', 'in_progress')->count(),
+            'locked' => (clone $baseAttemptQuery)->where('status', 'locked')->count(),
+            'submitted' => (clone $baseAttemptQuery)->whereIn('status', ['submitted', 'auto_submitted'])->count(),
         ];
 
-        $participantIds = (clone $baseQuery)->pluck('student_id');
-        $classes = Student::whereIn('id', $participantIds)
+        $classes = (clone $targetStudentsBase)
             ->whereNotNull('kelas')
+            ->where('kelas', '!=', '')
             ->distinct()
             ->pluck('kelas')
-            ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+            ->sort(fn (string $a, string $b) => $this->compareClassNames($a, $b))
             ->values();
-        $rooms = Student::whereIn('id', $participantIds)
+        $rooms = (clone $targetStudentsBase)
             ->whereNotNull('ruang')
             ->where('ruang', '!=', '')
             ->distinct()
             ->pluck('ruang')
-            ->sort(SORT_NATURAL | SORT_FLAG_CASE)
+            ->sort(fn (string $a, string $b) => strnatcasecmp($a, $b))
             ->values();
 
         $kelas = trim((string) $request->query('kelas', ''));
         $ruang = trim((string) $request->query('ruang', ''));
         $search = trim((string) $request->query('search', ''));
+        $statusFilter = trim((string) $request->query('status', ''));
 
-        $attempts = ExamAttempt::with(['student', 'violations'])
-            ->withCount(['answers as answered_count' => fn ($q) => $q->whereNotNull('answer_data')])
-            ->where('exam_id', $exam->id)
-            ->when($kelas !== '', fn ($q) => $q->whereHas('student', fn ($sq) => $sq->where('kelas', $kelas)))
-            ->when($ruang !== '', fn ($q) => $q->whereHas('student', fn ($sq) => $sq->where('ruang', $ruang)))
-            ->when($search !== '', fn ($q) => $q->whereHas('student', function ($sq) use ($search) {
+        $students = (clone $targetStudentsBase)
+            ->when($kelas !== '', fn ($q) => $q->where('kelas', $kelas))
+            ->when($ruang !== '', fn ($q) => $q->where('ruang', $ruang))
+            ->when($search !== '', fn ($q) => $q->where(function ($sq) use ($search) {
                 $sq->where('name', 'like', "%{$search}%")
                     ->orWhere('nis', 'like', "%{$search}%");
             }))
-            ->orderByDesc('updated_at')
-            ->paginate(10)
+            ->when($statusFilter === 'not_started', fn ($q) => $q->whereDoesntHave('attempts', fn ($aq) => $aq->where('exam_id', $exam->id)))
+            ->when(in_array($statusFilter, ['in_progress', 'locked'], true), fn ($q) => $q->whereHas('attempts', fn ($aq) => $aq->where('exam_id', $exam->id)->where('status', $statusFilter)))
+            ->when($statusFilter === 'submitted', fn ($q) => $q->whereHas('attempts', fn ($aq) => $aq->where('exam_id', $exam->id)->whereIn('status', ['submitted', 'auto_submitted'])))
+            ->orderBy('kelas')
+            ->orderBy('name')
+            ->paginate(20)
             ->withQueryString();
 
-        return view('exams.monitor', compact('exam', 'attempts', 'summary', 'totalQuestions', 'classes', 'rooms', 'kelas', 'ruang', 'search'));
+        $attemptsByStudent = ExamAttempt::with(['violations'])
+            ->withCount(['answers as answered_count' => fn ($q) => $q->whereNotNull('answer_data')])
+            ->where('exam_id', $exam->id)
+            ->whereIn('student_id', $students->pluck('id'))
+            ->get()
+            ->keyBy('student_id');
+
+        return view('exams.monitor', compact(
+            'exam',
+            'students',
+            'attemptsByStudent',
+            'summary',
+            'totalQuestions',
+            'classes',
+            'rooms',
+            'kelas',
+            'ruang',
+            'search',
+            'statusFilter'
+        ));
     }
 
     public function resetDevice(ExamAttempt $attempt): RedirectResponse
