@@ -82,7 +82,7 @@
 
 <div class="grid grid-cols-2 sm:grid-cols-5 gap-4">
   <div class="bg-white border border-notion-border rounded-lg p-4">
-    <p class="text-sm text-notion-gray">Total Target Peserta</p>
+    <p class="text-sm text-notion-gray">Total Peserta</p>
     <p class="text-2xl font-bold tnum mt-1">{{ $summary['total'] }}</p>
   </div>
   <div class="bg-white border border-notion-border rounded-lg p-4">
@@ -90,15 +90,15 @@
     <p class="text-2xl font-bold text-notion-gray tnum mt-1">{{ $summary['not_started'] }}</p>
   </div>
   <div class="bg-white border border-notion-border rounded-lg p-4">
-    <p class="text-sm text-notion-gray">Sedang Mengerjakan</p>
+    <p class="text-sm text-notion-gray">Mengerjakan</p>
     <p class="text-2xl font-bold text-notion-blue tnum mt-1">{{ $summary['in_progress'] }}</p>
   </div>
   <div class="bg-white border border-notion-border rounded-lg p-4">
-    <p class="text-sm text-notion-gray">Terkunci (Pelanggaran)</p>
+    <p class="text-sm text-notion-gray">Pelanggaran</p>
     <p class="text-2xl font-bold text-notion-red tnum mt-1">{{ $summary['locked'] }}</p>
   </div>
   <div class="bg-white border border-notion-border rounded-lg p-4">
-    <p class="text-sm text-notion-gray">Selesai / Submit</p>
+    <p class="text-sm text-notion-gray">Selesai</p>
     <p class="text-2xl font-bold text-emerald-700 tnum mt-1">{{ $summary['submitted'] }}</p>
   </div>
 </div>
