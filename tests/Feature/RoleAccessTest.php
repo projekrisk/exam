@@ -198,10 +198,11 @@ class RoleAccessTest extends TestCase
         $ruang1FromClass1 = \App\Models\Student::where('ruang', 'Ruang 1')->where('kelas', 'X-E1')->count();
         $ruang2FromClass1 = \App\Models\Student::where('ruang', 'Ruang 2')->where('kelas', 'X-E1')->count();
 
-        $this->assertSame(20, $ruang1FromClass1);
-        $this->assertSame(11, $ruang2FromClass1);
-        $this->assertSame(20, $ruang2Count);
-        $this->assertSame(26, $ruang1Count);
+        // X-E1 (31 siswa) dibagi 2 -> 16 (Ruang 1) dan 15 (Ruang 2); X-E2 (15 siswa) -> 8 (Ruang 1) dan 7 (Ruang 2)
+        $this->assertSame(16, $ruang1FromClass1);
+        $this->assertSame(15, $ruang2FromClass1);
+        $this->assertSame(24, $ruang1Count);
+        $this->assertSame(22, $ruang2Count);
 
         $this->actingAs($admin)->get('/kartu-ujian/denah?ruang=Ruang+1&pattern=zigzag')
             ->assertOk()

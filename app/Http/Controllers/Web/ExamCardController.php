@@ -86,38 +86,70 @@ class ExamCardController extends Controller
 
         $total = $students->count();
         $neededRooms = (int) ceil($total / $maxPerRoom);
-        $effectiveRoomCount = $neededRooms;
-
-        $roomBuckets = [];
-        for ($r = 1; $r <= $effectiveRoomCount; $r++) {
-            $roomBuckets[$r] = [];
-        }
 
         if ($mode === 'half_split' && $maxPerRoom >= 2) {
-            $firstWaveCap = (int) floor($maxPerRoom / 2);
-            $secondWaveCap = $maxPerRoom - $firstWaveCap;
-            $queue = $students->values()->all();
-            $idx = 0;
+            // Bagi setiap kelas menjadi 2 bagian: bagian pertama ceil(n/2) (mis. 36->18, 37->19), sisanya floor(n/2) (18)
+            $halves = [];
+            foreach ($students->groupBy('kelas') as $classStudents) {
+                $cnt = $classStudents->count();
+                $firstSize = (int) ceil($cnt / 2);
+                $halves[] = $classStudents->slice(0, $firstSize)->values()->all();
+                if ($cnt > $firstSize) {
+                    $halves[] = $classStudents->slice($firstSize)->values()->all();
+                }
+            }
 
+            $idealRoomsForHalves = (int) ceil(count($halves) / 2);
+            $effectiveRoomCount = max($neededRooms, min($roomCount, $idealRoomsForHalves));
+
+            $roomBuckets = [];
             $waveOneBuckets = [];
             $waveTwoBuckets = [];
             for ($r = 1; $r <= $effectiveRoomCount; $r++) {
+                $roomBuckets[$r] = [];
                 $waveOneBuckets[$r] = [];
                 $waveTwoBuckets[$r] = [];
             }
 
-            for ($r = 1; $r <= $effectiveRoomCount && $idx < $total; $r++) {
-                while (count($waveOneBuckets[$r]) < $firstWaveCap && $idx < $total) {
-                    $waveOneBuckets[$r][] = $queue[$idx++];
+            $halfIdx = 0;
+            $halfTotal = count($halves);
+            $overflowStudents = [];
+
+            // Putaran 1: tempatkan 1 belahan kelas per ruang
+            for ($r = 1; $r <= $effectiveRoomCount && $halfIdx < $halfTotal; $r++) {
+                $half = $halves[$halfIdx++];
+                if (count($half) <= $maxPerRoom) {
+                    $waveOneBuckets[$r] = $half;
+                } else {
+                    $waveOneBuckets[$r] = array_slice($half, 0, $maxPerRoom);
+                    array_push($overflowStudents, ...array_slice($half, $maxPerRoom));
                 }
             }
 
-            for ($r = 1; $r <= $effectiveRoomCount && $idx < $total; $r++) {
-                while (count($waveTwoBuckets[$r]) < $secondWaveCap && $idx < $total) {
-                    $waveTwoBuckets[$r][] = $queue[$idx++];
+            // Putaran 2: pasangkan belahan kelas berikutnya ke ruang yang masih cukup
+            for ($r = 1; $r <= $effectiveRoomCount && $halfIdx < $halfTotal; $r++) {
+                $half = $halves[$halfIdx];
+                if (count($waveOneBuckets[$r]) + count($half) <= $maxPerRoom) {
+                    $waveTwoBuckets[$r] = $half;
+                    $halfIdx++;
                 }
             }
 
+            // Jika masih ada belahan/siswa tersisa, distribusikan ke sisa kapasitas ruang
+            while ($halfIdx < $halfTotal) {
+                array_push($overflowStudents, ...$halves[$halfIdx++]);
+            }
+            if (! empty($overflowStudents)) {
+                $oIdx = 0;
+                $oTotal = count($overflowStudents);
+                for ($r = 1; $r <= $effectiveRoomCount && $oIdx < $oTotal; $r++) {
+                    while ((count($waveOneBuckets[$r]) + count($waveTwoBuckets[$r])) < $maxPerRoom && $oIdx < $oTotal) {
+                        $waveTwoBuckets[$r][] = $overflowStudents[$oIdx++];
+                    }
+                }
+            }
+
+            // Susun selang-seling agar dua kelompok kelas duduk bergantian
             for ($r = 1; $r <= $effectiveRoomCount; $r++) {
                 $a = $waveOneBuckets[$r];
                 $b = $waveTwoBuckets[$r];
@@ -132,6 +164,12 @@ class ExamCardController extends Controller
                 }
             }
         } else {
+            $effectiveRoomCount = $neededRooms;
+            $roomBuckets = [];
+            for ($r = 1; $r <= $effectiveRoomCount; $r++) {
+                $roomBuckets[$r] = [];
+            }
+
             $r = 1;
             foreach ($students as $student) {
                 if (count($roomBuckets[$r]) >= $maxPerRoom) {
