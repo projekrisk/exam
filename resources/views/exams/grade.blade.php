@@ -13,15 +13,17 @@
     <p class="text-sm text-notion-gray mt-1">{{ $exam->title }} • {{ $essayQuestions->count() }} soal uraian • {{ $attempts->count() }} peserta</p>
   </div>
 
+  <div class="flex flex-wrap items-center gap-2">
+    <a href="{{ route('exams.export', $exam) }}" class="px-3.5 py-2 bg-white border border-notion-border text-notion-text rounded-md text-sm font-medium hover:bg-notion-hover transition-colors inline-flex items-center gap-1.5 shadow-sm">
+      <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i> Unduh Excel (.xlsx)
+    </a>
   @if($exam->scores_finalized)
-    <div class="flex flex-wrap items-center gap-2">
       <span class="px-3 py-2 rounded-md text-sm font-medium bg-emerald-50 text-emerald-700 border border-emerald-200 inline-flex items-center gap-1.5">
         <i data-lucide="lock" class="w-4 h-4"></i> Nilai Difinalisasi
       </span>
       <a href="{{ $exam->scoreArchive ? route('score-archives.show', $exam->scoreArchive) : route('score-archives.index') }}" class="px-3.5 py-2 bg-notion-text text-white rounded-md text-sm font-medium hover:bg-black inline-flex items-center gap-1.5">
         <i data-lucide="award" class="w-4 h-4"></i> Buka Daftar Nilai
       </a>
-    </div>
   @else
     <form method="POST" action="{{ route('exams.finalize-scores', $exam) }}" onsubmit="return handleConfirmSubmit(event, 'Setelah difinalisasi, seluruh nilai peserta akan dikunci permanen dan disimpan ke menu Daftar Nilai (tetap tersimpan meskipun jadwal ujian dihapus). Lanjutkan?', 'Finalisasi &amp; Kunci Nilai', 'Ya, Finalisasi', 'info')">
       @csrf
@@ -30,6 +32,7 @@
       </button>
     </form>
   @endif
+  </div>
 </div>
 
 @if($exam->scores_finalized)

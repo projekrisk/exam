@@ -132,6 +132,11 @@
                 </button>
                 @endif
                 @endif
+                @if($isFinished && ($exam->execution_mode === 'mandiri' || $exam->scores_released || auth()->user()->isAdmin()))
+                <a href="{{ route('exams.export', $exam) }}" class="flex items-center gap-2.5 px-3.5 py-2 text-sm text-notion-text hover:bg-notion-hover transition-colors">
+                  <i data-lucide="file-spreadsheet" class="w-4 h-4 text-emerald-600"></i> Unduh Excel (.xlsx)
+                </a>
+                @endif
                 @if(auth()->user()->isAdmin() && $exam->effectiveStatus() === 'finished' && !$exam->scores_released)
                 <form method="POST" action="{{ route('exams.release-scores', $exam) }}" onsubmit="return handleConfirmSubmit(event, 'Rilis nilai ujian {{ $exam->title }} agar dapat dilihat oleh siswa?', 'Konfirmasi Rilis Nilai', 'Ya, Rilis Nilai', 'info')">
                   @csrf
@@ -204,6 +209,11 @@
             <a href="{{ route('exams.grade', $exam) }}" class="px-3 py-1.5 bg-white border border-notion-border rounded text-sm font-medium">Input &amp; Finalisasi</a>
             @else
             <button type="button" onclick="showNoticeModal('{{ $mobileStatus === 'finished' && $exam->execution_mode !== 'mandiri' && !$exam->scores_released ? 'Menunggu Rilis Nilai' : 'Ujian Belum Selesai' }}', '{{ $mobileStatus === 'finished' && $exam->execution_mode !== 'mandiri' && !$exam->scores_released ? 'Input nilai hanya dapat dilakukan setelah panitia merilis nilai.' : 'Input nilai hanya dapat dilakukan setelah ujian selesai.' }}')" class="px-3 py-1.5 bg-notion-hover border border-notion-border text-notion-gray rounded text-sm font-medium">Input Nilai</button>
+            @endif
+            @if($mobileStatus === 'finished' && ($exam->execution_mode === 'mandiri' || $exam->scores_released || auth()->user()->isAdmin()))
+            <a href="{{ route('exams.export', $exam) }}" class="px-3 py-1.5 bg-white border border-notion-border rounded text-sm font-medium inline-flex items-center gap-1">
+              <i data-lucide="file-spreadsheet" class="w-3.5 h-3.5 text-emerald-600"></i> Excel
+            </a>
             @endif
             @if((auth()->user()->isAdmin() || $mobileCreator) && $mobileStatus !== 'ongoing')
             <form method="POST" action="{{ route('exams.destroy', $exam) }}" onsubmit="return handleConfirmSubmit(event, 'Jadwal ujian {{ $exam->title }} beserta seluruh sesi pesertanya akan dihapus permanen.', 'Konfirmasi Hapus Jadwal', 'Ya, Hapus', 'danger')">

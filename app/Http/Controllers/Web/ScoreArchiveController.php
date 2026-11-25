@@ -78,7 +78,7 @@ class ScoreArchiveController extends Controller
         return view('score_archives.show', compact('scoreArchive', 'items', 'classes', 'search', 'kelas'));
     }
 
-    public function export(Request $request, ExamScoreArchive $scoreArchive): BinaryFileResponse
+    public function export(Request $request, ExamScoreArchive $scoreArchive, \App\Services\ExamExcelExportService $excelExport): BinaryFileResponse
     {
         $this->authorizeArchiveAccess($request, $scoreArchive);
 
@@ -92,110 +92,40 @@ class ScoreArchiveController extends Controller
             })
             ->values();
 
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Rekap Nilai');
-
-        $sheet->setCellValue('A1', 'REKAP NILAI UJIAN - ' . strtoupper($scoreArchive->exam_title));
-        $sheet->mergeCells('A1:N1');
-        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
-
-        $sheet->setCellValue(
-            'A2',
-            'Mata Pelajaran: ' . $scoreArchive->subject_name
-            . '  |  Mode: ' . ($scoreArchive->execution_mode === 'terpusat' ? 'Terpusat' : 'Mandiri')
-            . '  |  Jadwal: ' . ($scoreArchive->exam_date?->translatedFormat('d M Y H:i') ?? $scoreArchive->finalized_at->translatedFormat('d M Y H:i')) . ' WIB'
-        );
-        $sheet->mergeCells('A2:N2');
-        $sheet->getStyle('A2')->getFont()->setSize(10)->getColor()->setRGB('475569');
-
-        $sheet->setCellValue(
-            'A3',
-            "Total Soal: {$scoreArchive->total_questions} (Objektif: {$scoreArchive->objective_count}, Uraian: {$scoreArchive->essay_count})  |  Total Peserta: " . $items->count()
-        );
-        $sheet->mergeCells('A3:N3');
-        $sheet->getStyle('A3')->getFont()->setSize(10)->getColor()->setRGB('475569');
-
-        $headerRow = 5;
-        $headers = [
-            'No',
-            'NIS',
-            'Nama Siswa',
-            'Kelas',
-            'Ruang',
-            'Dijawab',
-            'Benar Objektif',
-            'Salah / Kurang',
-            'Skor Objektif',
-            'Skor Uraian',
-            'Nilai Akhir',
-            'Pelanggaran',
-            'Status Ujian',
-            'Status Koreksi',
-        ];
-        $sheet->fromArray($headers, null, "A{$headerRow}");
-        $sheet->getRowDimension($headerRow)->setRowHeight(24);
-        $sheet->getStyle("A{$headerRow}:N{$headerRow}")->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => '1E293B']],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => 'EFF6FF'],
-            ],
-            'alignment' => [
-                'horizontal' => Alignment::HORIZONTAL_CENTER,
-                'vertical' => Alignment::VERTICAL_CENTER,
-            ],
-        ]);
-
-        $rowIndex = $headerRow + 1;
-        foreach ($items as $idx => $item) {
+        $rows = $items->map(function ($item) {
             $statusLabel = match ($item->attempt_status) {
                 'submitted' => 'Selesai',
                 'auto_submitted' => 'Selesai (Otomatis)',
                 'locked' => 'Terkunci',
                 default => 'Selesai',
             };
-            $gradingLabel = $item->grading_status === 'final' ? 'Selesai Dinilai' : 'Menunggu Koreksi';
 
-            $sheet->fromArray([
-                $idx + 1,
-                $item->student_nis,
-                $item->student_name,
-                $item->student_kelas,
-                $item->student_ruang ?: '-',
-                "{$item->answered_count} / {$scoreArchive->total_questions}",
-                "{$item->objective_correct} / {$scoreArchive->objective_count}",
-                (int) $item->objective_wrong,
-                (float) $item->objective_score,
-                (float) $item->essay_score,
-                (float) $item->final_score,
-                "{$item->violation_count} / {$scoreArchive->max_violations}",
-                $statusLabel,
-                $gradingLabel,
-            ], null, "A{$rowIndex}");
+            return [
+                'nis' => $item->student_nis,
+                'name' => $item->student_name,
+                'kelas' => $item->student_kelas,
+                'ruang' => $item->student_ruang ?: '-',
+                'answered_count' => (int) $item->answered_count,
+                'objective_correct' => (int) $item->objective_correct,
+                'objective_wrong' => (int) $item->objective_wrong,
+                'objective_score' => (float) $item->objective_score,
+                'essay_score' => (float) $item->essay_score,
+                'violation_count' => (int) $item->violation_count,
+                'status_label' => $statusLabel,
+                'grading_label' => $item->grading_status === 'final' ? 'Selesai Dinilai' : 'Menunggu Koreksi',
+            ];
+        });
 
-            if ($idx % 2 === 1) {
-                $sheet->getStyle("A{$rowIndex}:N{$rowIndex}")->getFill()
-                    ->setFillType(Fill::FILL_SOLID)
-                    ->getStartColor()->setRGB('F8FAFC');
-            }
-
-            $rowIndex++;
-        }
-
-        $lastRow = max($headerRow, $rowIndex - 1);
-        $sheet->getStyle("A{$headerRow}:N{$lastRow}")->applyFromArray([
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => 'CBD5E1'],
-                ],
-            ],
-        ]);
-
-        foreach (range('A', 'N') as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-        }
+        $spreadsheet = $excelExport->buildWorkbook([
+            'title' => $scoreArchive->exam_title,
+            'subject' => $scoreArchive->subject_name,
+            'mode' => $scoreArchive->execution_mode === 'terpusat' ? 'Terpusat' : 'Mandiri',
+            'schedule' => ($scoreArchive->exam_date?->translatedFormat('d M Y H:i') ?? $scoreArchive->finalized_at->translatedFormat('d M Y H:i')) . ' WIB',
+            'total_questions' => (int) $scoreArchive->total_questions,
+            'objective_count' => (int) $scoreArchive->objective_count,
+            'essay_count' => (int) $scoreArchive->essay_count,
+            'max_violations' => (int) $scoreArchive->max_violations,
+        ], $rows);
 
         $filename = 'nilai-' . Str::slug($scoreArchive->exam_title) . '.xlsx';
         $tempPath = storage_path('app/' . $filename);

@@ -574,7 +574,7 @@ class ExamController extends Controller
             ->with('toast_success', 'Nilai berhasil difinalisasi, dikunci, dan diarsipkan ke Daftar Nilai.');
     }
 
-    public function exportResults(Request $request, Exam $exam): BinaryFileResponse|RedirectResponse
+    public function exportResults(Request $request, Exam $exam, \App\Services\ExamExcelExportService $excelExport): BinaryFileResponse|RedirectResponse
     {
         $this->authorizeExamAccess($request, $exam);
         if ($exam->effectiveStatus() !== 'finished') {
@@ -609,63 +609,7 @@ class ExamController extends Controller
             })
             ->values();
 
-        $spreadsheet = new Spreadsheet();
-        $sheet = $spreadsheet->getActiveSheet();
-        $sheet->setTitle('Rekap Nilai');
-
-        $sheet->setCellValue('A1', 'REKAP NILAI UJIAN - ' . strtoupper($exam->title));
-        $sheet->mergeCells('A1:N1');
-        $sheet->getStyle('A1')->getFont()->setBold(true)->setSize(13);
-
-        $sheet->setCellValue(
-            'A2',
-            'Mata Pelajaran: ' . ($exam->subject->name ?? '-')
-            . '  |  Mode: ' . ($exam->execution_mode === 'terpusat' ? 'Terpusat' : 'Mandiri')
-            . '  |  Jadwal: ' . $exam->start_at->translatedFormat('d M Y H:i') . ' WIB'
-        );
-        $sheet->mergeCells('A2:N2');
-        $sheet->getStyle('A2')->getFont()->setSize(10)->getColor()->setRGB('475569');
-
-        $sheet->setCellValue(
-            'A3',
-            "Total Soal: {$totalQuestions} (Objektif: {$objectiveCount}, Uraian: {$essayCount})  |  Total Peserta: " . $attempts->count()
-        );
-        $sheet->mergeCells('A3:N3');
-        $sheet->getStyle('A3')->getFont()->setSize(10)->getColor()->setRGB('475569');
-
-        $headerRow = 5;
-        $headers = [
-            'No',
-            'NIS',
-            'Nama Siswa',
-            'Kelas',
-            'Ruang',
-            'Dijawab',
-            'Benar Objektif',
-            'Salah / Kurang',
-            'Skor Objektif',
-            'Skor Uraian',
-            'Nilai Akhir',
-            'Pelanggaran',
-            'Status Ujian',
-            'Status Koreksi',
-        ];
-        $sheet->fromArray($headers, null, "A{$headerRow}");
-        $sheet->getRowDimension($headerRow)->setRowHeight(24);
-        $sheet->getStyle("A{$headerRow}:N{$headerRow}")->applyFromArray([
-            'font' => ['bold' => true, 'color' => ['rgb' => '1E293B']],
-            'fill' => [
-                'fillType' => Fill::FILL_SOLID,
-                'startColor' => ['rgb' => 'EFF6FF'],
-            ],
-            'alignment' => [
-                'horizontal' => Alignment::HORIZONTAL_CENTER,
-                'vertical' => Alignment::VERTICAL_CENTER,
-            ],
-        ]);
-
-        $rowIndex = $headerRow + 1;
-        foreach ($attempts as $idx => $attempt) {
+        $rows = $attempts->map(function (ExamAttempt $attempt) use ($objectiveQuestions, $objectiveCount, $totalQuestions) {
             $answersByQ = $attempt->answers->keyBy('question_id');
             $answeredCount = $attempt->answers->filter(fn ($a) => ! empty($a->answer_data))->count();
 
@@ -676,7 +620,6 @@ class ExamController extends Controller
                     $objectiveCorrect++;
                 }
             }
-            $objectiveWrong = max(0, $objectiveCount - $objectiveCorrect);
 
             $statusLabel = match ($attempt->status) {
                 'submitted' => 'Selesai',
@@ -684,64 +627,33 @@ class ExamController extends Controller
                 'locked' => 'Terkunci',
                 default => 'Mengerjakan',
             };
-            $gradingLabel = $attempt->grading_status === 'final' ? 'Selesai Dinilai' : 'Menunggu Koreksi';
 
-            $sheet->fromArray([
-                $idx + 1,
-                $attempt->student->nis ?? '-',
-                $attempt->student->name ?? '-',
-                $attempt->student->kelas ?? '-',
-                $attempt->student->ruang ?: '-',
-                "{$answeredCount} / {$totalQuestions}",
-                "{$objectiveCorrect} / {$objectiveCount}",
-                $objectiveWrong,
-                (float) $attempt->objective_score,
-                (float) $attempt->essay_score,
-                (float) $attempt->final_score,
-                "{$attempt->violation_count} / {$exam->max_violations}",
-                $statusLabel,
-                $gradingLabel,
-            ], null, "A{$rowIndex}");
+            return [
+                'nis' => $attempt->student->nis ?? '-',
+                'name' => $attempt->student->name ?? '-',
+                'kelas' => $attempt->student->kelas ?? '-',
+                'ruang' => $attempt->student->ruang ?: '-',
+                'answered_count' => $answeredCount,
+                'objective_correct' => $objectiveCorrect,
+                'objective_wrong' => max(0, $objectiveCount - $objectiveCorrect),
+                'objective_score' => (float) $attempt->objective_score,
+                'essay_score' => (float) $attempt->essay_score,
+                'violation_count' => (int) $attempt->violation_count,
+                'status_label' => $statusLabel,
+                'grading_label' => $attempt->grading_status === 'final' ? 'Selesai Dinilai' : 'Menunggu Koreksi',
+            ];
+        });
 
-            if ($idx % 2 === 1) {
-                $sheet->getStyle("A{$rowIndex}:N{$rowIndex}")->getFill()
-                    ->setFillType(Fill::FILL_SOLID)
-                    ->getStartColor()->setRGB('F8FAFC');
-            }
-
-            $rowIndex++;
-        }
-
-        $lastRow = max($headerRow, $rowIndex - 1);
-
-        $sheet->getStyle("A{$headerRow}:N{$lastRow}")->applyFromArray([
-            'borders' => [
-                'allBorders' => [
-                    'borderStyle' => Border::BORDER_THIN,
-                    'color' => ['rgb' => 'CBD5E1'],
-                ],
-                'outline' => [
-                    'borderStyle' => Border::BORDER_MEDIUM,
-                    'color' => ['rgb' => '94A3B8'],
-                ],
-            ],
-            'alignment' => [
-                'vertical' => Alignment::VERTICAL_CENTER,
-            ],
-        ]);
-
-        if ($lastRow > $headerRow) {
-            $dataStart = $headerRow + 1;
-            $sheet->getStyle("A{$dataStart}:B{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("D{$dataStart}:H{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("L{$dataStart}:L{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-            $sheet->getStyle("I{$dataStart}:K{$lastRow}")->getNumberFormat()->setFormatCode('0.00');
-            $sheet->getStyle("I{$dataStart}:K{$lastRow}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_RIGHT);
-        }
-
-        foreach (range('A', 'N') as $col) {
-            $sheet->getColumnDimension($col)->setAutoSize(true);
-        }
+        $spreadsheet = $excelExport->buildWorkbook([
+            'title' => $exam->title,
+            'subject' => $exam->subject->name ?? '-',
+            'mode' => $exam->execution_mode === 'terpusat' ? 'Terpusat' : 'Mandiri',
+            'schedule' => $exam->start_at->translatedFormat('d M Y H:i') . ' WIB',
+            'total_questions' => $totalQuestions,
+            'objective_count' => $objectiveCount,
+            'essay_count' => $essayCount,
+            'max_violations' => (int) $exam->max_violations,
+        ], $rows);
 
         $filename = 'nilai_' . Str::slug($exam->title) . '.xlsx';
         $tempPath = storage_path('app/' . $filename);

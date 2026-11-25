@@ -138,4 +138,75 @@ class ScoreFinalizationTest extends TestCase
         $this->actingAs($panitia)->delete("/daftar-nilai/{$archive->id}")->assertRedirect('/daftar-nilai');
         $this->assertNull(ExamScoreArchive::find($archive->id));
     }
+
+    public function test_excel_export_splits_sheets_by_class_and_uses_formula_for_final_score(): void
+    {
+        $panitia = User::factory()->create(['username' => 'panitia_xls', 'role' => 'panitia']);
+        $subject = Subject::create(['code' => 'BIN', 'name' => 'Bahasa Indonesia']);
+
+        $bank = QuestionBank::create([
+            'subject_id' => $subject->id,
+            'teacher_id' => $panitia->id,
+            'title' => 'Bank Panitia BIN',
+            'target_classes' => ['X-E1', 'X-E2'],
+            'is_ready' => true,
+        ]);
+
+        $exam = Exam::create([
+            'question_bank_id' => $bank->id,
+            'subject_id' => $subject->id,
+            'created_by' => $panitia->id,
+            'title' => 'PAS Bahasa Indonesia',
+            'execution_mode' => 'terpusat',
+            'target_classes' => ['X-E1', 'X-E2'],
+            'start_at' => now()->subHours(2),
+            'end_at' => now()->subHour(),
+            'duration_minutes' => 60,
+            'status' => 'finished',
+            'scores_released' => true,
+        ]);
+
+        $s1 = Student::create(['nis' => '88001', 'nisn' => '0088001', 'name' => 'Ani', 'kelas' => 'X-E1', 'is_active' => true]);
+        $s2 = Student::create(['nis' => '88002', 'nisn' => '0088002', 'name' => 'Budi', 'kelas' => 'X-E2', 'is_active' => true]);
+
+        ExamAttempt::create([
+            'exam_id' => $exam->id,
+            'student_id' => $s1->id,
+            'device_id' => 'dev-a',
+            'started_at' => now()->subHours(2),
+            'must_end_at' => now()->subHour(),
+            'submitted_at' => now()->subHour(),
+            'status' => 'submitted',
+            'objective_score' => 75,
+            'essay_score' => 15,
+            'final_score' => 90,
+            'grading_status' => 'final',
+        ]);
+        ExamAttempt::create([
+            'exam_id' => $exam->id,
+            'student_id' => $s2->id,
+            'device_id' => 'dev-b',
+            'started_at' => now()->subHours(2),
+            'must_end_at' => now()->subHour(),
+            'submitted_at' => now()->subHour(),
+            'status' => 'submitted',
+            'objective_score' => 80,
+            'essay_score' => 0,
+            'final_score' => 80,
+            'grading_status' => 'pending_essay',
+        ]);
+
+        $response = $this->actingAs($panitia)->get("/ujian/{$exam->id}/ekspor");
+        $response->assertOk();
+
+        $filePath = $response->baseResponse->getFile()->getPathname();
+        $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($filePath);
+
+        $this->assertSame(['X-E1', 'X-E2'], $spreadsheet->getSheetNames());
+        $sheet1 = $spreadsheet->getSheetByName('X-E1');
+        $this->assertSame(75, $sheet1->getCell('I6')->getValue());
+        $this->assertSame(15, $sheet1->getCell('J6')->getValue());
+        $this->assertSame('=I6+J6', $sheet1->getCell('K6')->getValue());
+        $this->assertSame(90, $sheet1->getCell('K6')->getCalculatedValue());
+    }
 }
