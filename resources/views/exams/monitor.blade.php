@@ -13,9 +13,9 @@
     <div class="flex flex-wrap items-center gap-2 text-sm text-notion-gray">
       <span>Token Aktif:</span>
       @if($exam->effectiveStatus() === 'finished')
-        <span class="font-mono font-bold text-notion-gray bg-notion-hover px-2.5 py-0.5 rounded border border-notion-border">-</span>
+        <span id="active-token-value" class="font-mono font-bold text-notion-gray bg-notion-hover px-2.5 py-0.5 rounded border border-notion-border">-</span>
       @else
-        <span class="font-mono font-bold text-notion-text tracking-widest bg-notion-hover px-2.5 py-0.5 rounded border border-notion-border">{{ $exam->require_token ? $exam->token : 'TANPA TOKEN' }}</span>
+        <span id="active-token-value" class="font-mono font-bold text-notion-text tracking-widest bg-notion-hover px-2.5 py-0.5 rounded border border-notion-border transition-colors duration-300">{{ $exam->require_token ? $exam->token : 'TANPA TOKEN' }}</span>
         @if($exam->require_token)
           <form method="POST" action="{{ route('exams.regenerate-token', $exam) }}" class="inline">
             @csrf
@@ -25,6 +25,11 @@
           </form>
           @if($exam->token_refresh_minutes)
             <span class="px-2 py-0.5 rounded text-sm bg-blue-50 text-notion-blue border border-blue-200">Auto / {{ $exam->token_refresh_minutes }} menit</span>
+            @if($tokenRemainingSeconds !== null)
+              <span id="token-countdown-badge" class="px-2 py-0.5 rounded text-sm font-mono font-semibold bg-amber-50 text-amber-800 border border-amber-200 tnum">
+                Berganti dalam <span id="token-countdown">{{ sprintf('%02d:%02d', intdiv($tokenRemainingSeconds, 60), $tokenRemainingSeconds % 60) }}</span>
+              </span>
+            @endif
           @endif
         @endif
       @endif
@@ -350,6 +355,67 @@
   document.addEventListener('click', function () {
     document.querySelectorAll('.mon-action-menu').forEach(m => m.classList.add('hidden'));
   });
+
+  @if($exam->require_token && $exam->token_refresh_minutes && $exam->effectiveStatus() === 'ongoing' && $tokenRemainingSeconds !== null)
+  (function () {
+    let remaining = {{ (int) $tokenRemainingSeconds }};
+    let fetching = false;
+    const tokenEl = document.getElementById('active-token-value');
+    const countdownEl = document.getElementById('token-countdown');
+    const badgeEl = document.getElementById('token-countdown-badge');
+    const statusUrl = @json(route('exams.token-status', $exam));
+
+    function renderTime(sec) {
+      if (!countdownEl) return;
+      const safe = Math.max(0, sec);
+      const m = String(Math.floor(safe / 60)).padStart(2, '0');
+      const s = String(safe % 60).padStart(2, '0');
+      countdownEl.textContent = `${m}:${s}`;
+    }
+
+    async function syncToken() {
+      if (fetching) return;
+      fetching = true;
+      try {
+        const res = await fetch(statusUrl, {
+          headers: { 'Accept': 'application/json', 'X-Requested-With': 'XMLHttpRequest' }
+        });
+        if (!res.ok) return;
+        const data = await res.json();
+        if (tokenEl && data.token && tokenEl.textContent.trim() !== data.token) {
+          tokenEl.textContent = data.token;
+          tokenEl.classList.add('bg-emerald-100', 'border-emerald-400');
+          setTimeout(() => tokenEl.classList.remove('bg-emerald-100', 'border-emerald-400'), 1500);
+        }
+        if (data.status === 'finished') {
+          if (badgeEl) badgeEl.classList.add('hidden');
+          return;
+        }
+        if (typeof data.remaining_seconds === 'number') {
+          remaining = data.remaining_seconds;
+          renderTime(remaining);
+        }
+      } catch (e) {
+      } finally {
+        fetching = false;
+      }
+    }
+
+    renderTime(remaining);
+    setInterval(function () {
+      if (remaining > 0) {
+        remaining--;
+        renderTime(remaining);
+      }
+      if (remaining <= 0) {
+        syncToken();
+      }
+    }, 1000);
+
+    // Sinkronisasi berkala setiap 15 detik jika ada perubahan token manual dari tab/admin lain
+    setInterval(syncToken, 15000);
+  })();
+  @endif
 </script>
 @endpush
 @endsection

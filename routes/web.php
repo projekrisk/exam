@@ -100,6 +100,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/ujian/{exam}', [ExamController::class, 'update'])->name('exams.update')->middleware('role:super_admin,admin,panitia,guru');
     Route::delete('/ujian/{exam}', [ExamController::class, 'destroy'])->name('exams.destroy')->middleware('role:super_admin,admin,panitia,guru');
     Route::post('/ujian/{exam}/token-baru', [ExamController::class, 'regenerateToken'])->name('exams.regenerate-token');
+    Route::get('/ujian/{exam}/token-status', [ExamController::class, 'tokenStatus'])->name('exams.token-status');
     Route::post('/ujian/{exam}/status', [ExamController::class, 'updateStatus'])->name('exams.status');
     Route::post('/ujian/{exam}/rilis-nilai', [ExamController::class, 'releaseScores'])->name('exams.release-scores')->middleware('role:super_admin,admin,panitia');
     Route::get('/ujian/{exam}/pantau', [ExamController::class, 'monitor'])->name('exams.monitor');

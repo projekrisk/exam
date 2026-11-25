@@ -410,6 +410,8 @@ class ExamController extends Controller
             ->get()
             ->keyBy('student_id');
 
+        $tokenRemainingSeconds = $this->computeTokenRemainingSeconds($exam);
+
         return view('exams.monitor', compact(
             'exam',
             'students',
@@ -421,8 +423,42 @@ class ExamController extends Controller
             'kelas',
             'ruang',
             'search',
-            'statusFilter'
+            'statusFilter',
+            'tokenRemainingSeconds'
         ));
+    }
+
+    public function tokenStatus(Request $request, Exam $exam): \Illuminate\Http\JsonResponse
+    {
+        $this->authorizeExamAccess($request, $exam);
+        $exam->refreshTokenIfNeeded();
+        $exam->refresh();
+
+        $status = $exam->effectiveStatus();
+
+        return response()->json([
+            'token' => $status === 'finished' ? '-' : ($exam->require_token ? $exam->token : 'TANPA TOKEN'),
+            'require_token' => (bool) $exam->require_token,
+            'status' => $status,
+            'refresh_minutes' => $exam->token_refresh_minutes ? (int) $exam->token_refresh_minutes : null,
+            'remaining_seconds' => $this->computeTokenRemainingSeconds($exam),
+        ]);
+    }
+
+    private function computeTokenRemainingSeconds(Exam $exam): ?int
+    {
+        if (! $exam->require_token || ! $exam->token_refresh_minutes || $exam->effectiveStatus() !== 'ongoing') {
+            return null;
+        }
+
+        $lastUpdated = $exam->token_updated_at ?? $exam->updated_at ?? $exam->created_at;
+        if (! $lastUpdated) {
+            return (int) $exam->token_refresh_minutes * 60;
+        }
+
+        $nextRefreshAt = $lastUpdated->copy()->addMinutes((int) $exam->token_refresh_minutes);
+
+        return max(0, (int) now()->diffInSeconds($nextRefreshAt, false));
     }
 
     public function resetDevice(ExamAttempt $attempt): RedirectResponse
