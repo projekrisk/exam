@@ -113,6 +113,12 @@
       text-transform: uppercase;
       letter-spacing: 0.4px;
     }
+    .plan-title-year {
+      font-size: 8.5pt;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
 
     .room-layout {
       border: 1.6px solid #000000;
@@ -392,6 +398,7 @@
             <div class="plan-title">
               <div class="plan-title-main">DENAH TEMPAT DUDUK</div>
               <div class="plan-title-activity">{{ $activityNameUpper }}</div>
+              <div class="plan-title-year">TAHUN AJARAN {{ strtoupper($settings['academic_year'] ?: '2026/2027') }}</div>
             </div>
 
             <div class="room-layout">
