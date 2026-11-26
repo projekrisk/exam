@@ -199,7 +199,7 @@
           <i data-lucide="panel-left" class="w-4 h-4"></i>
         </button>
         <div class="flex items-center text-sm text-notion-gray whitespace-nowrap">
-          <span>Exam CBT</span>
+          <span>Exam</span>
           <span class="mx-1.5">/</span>
           <span class="text-notion-text font-medium truncate">@yield('breadcrumb', 'Dasbor')</span>
         </div>
