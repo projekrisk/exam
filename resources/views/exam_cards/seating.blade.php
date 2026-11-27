@@ -71,9 +71,9 @@
 
     .pages-wrap { padding: 18px; display: flex; flex-direction: column; align-items: center; gap: 18px; }
     .sheet {
-      width: 297mm;
-      min-height: 210mm;
-      padding: 9mm 12mm;
+      width: 210mm;
+      min-height: 297mm;
+      padding: 8mm 9mm;
       background: #ffffff;
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       page-break-after: always;
@@ -136,15 +136,15 @@
       border-bottom: 1px dashed #9ca3af;
     }
     .front-bar {
-      min-width: 95mm;
+      min-width: 62mm;
       border: 1.4px solid #000000;
       background: #f9fafb;
       text-align: center;
-      padding: 1.8mm 5mm;
-      font-size: 8.5pt;
+      padding: 1.5mm 3mm;
+      font-size: 8pt;
       font-weight: 800;
       text-transform: uppercase;
-      letter-spacing: 0.6px;
+      letter-spacing: 0.5px;
     }
     .door-wrap {
       display: flex;
@@ -174,16 +174,17 @@
 
     .seat-grid {
       display: grid;
-      gap: 2.2mm;
+      gap: 1.6mm;
     }
     .seat-cell {
       border: 0.9px solid #000000;
       border-radius: 3px;
-      padding: 1.4mm 1.8mm;
-      min-height: 18.5mm;
+      padding: 1.2mm 1.3mm;
+      min-height: 15mm;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
+      text-align: center;
       break-inside: avoid;
     }
     .seat-cell.empty {
@@ -194,21 +195,20 @@
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: 1.5mm;
-      font-size: 7pt;
+      gap: 1mm;
+      font-size: 6.2pt;
       border-bottom: 0.5px solid #d1d5db;
-      padding-bottom: 0.6mm;
+      padding-bottom: 0.5mm;
     }
     .seat-no { font-weight: 800; }
-    .seat-kelas { font-weight: 600; }
-    .seat-name {
-      font-size: 7.5pt;
-      font-weight: 700;
+    .seat-kelas { font-weight: 600; font-size: 6.2pt; }
+    .seat-urut {
+      font-size: 10pt;
+      font-weight: 800;
       line-height: 1.15;
-      margin-top: 0.8mm;
-      word-break: break-word;
+      margin: 0.8mm 0 0.4mm;
     }
-    .seat-nis { font-size: 6.8pt; margin-top: 0.5mm; }
+    .seat-urut-lbl { font-size: 6pt; color: #4b5563; }
 
     /* Kotak Nama Bangku (Gunting & Tempel) — muat 1 halaman */
     .label-sheet-header {
@@ -230,13 +230,13 @@
     }
     .label-grid {
       display: grid;
-      grid-template-columns: repeat(5, minmax(0, 1fr));
+      grid-template-columns: repeat(4, minmax(0, 1fr));
       gap: 1.6mm;
     }
     .desk-label {
       border: 1px dashed #111827;
-      padding: 1.2mm 1.8mm;
-      min-height: 17.5mm;
+      padding: 1.2mm 1.6mm;
+      min-height: 20mm;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -279,7 +279,7 @@
       color: #111827;
     }
 
-    @page { size: A4 landscape; margin: 8mm; }
+    @page { size: A4 portrait; margin: 8mm; }
     @media print {
       body { background: #ffffff; }
       .no-print { display: none !important; }
@@ -444,11 +444,11 @@
                     @if($cell['student'])
                       <div class="seat-cell">
                         <div class="seat-top">
-                          <span class="seat-no mono">Meja {{ str_pad((string) $cell['seat_no'], 2, '0', STR_PAD_LEFT) }}</span>
+                          <span class="seat-no mono">M{{ str_pad((string) $cell['seat_no'], 2, '0', STR_PAD_LEFT) }}</span>
                           <span class="seat-kelas">{{ $cell['student']->kelas }}</span>
                         </div>
-                        <div class="seat-name">{{ $cell['student']->name }}</div>
-                        <div class="seat-nis mono">{{ $cell['student']->nis }}</div>
+                        <div class="seat-urut mono">{{ str_pad((string) ($cell['attendance_no'] ?? $cell['seat_no']), 2, '0', STR_PAD_LEFT) }}</div>
+                        <div class="seat-urut-lbl">No. Urut Hadir</div>
                       </div>
                     @else
                       <div aria-hidden="true"></div>

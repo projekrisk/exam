@@ -263,6 +263,11 @@ class ExamCardController extends Controller
                 ->get()
                 ->values();
 
+            $attendanceNoByStudent = [];
+            foreach ($roomStudents as $idx => $st) {
+                $attendanceNoByStudent[$st->id] = $idx + 1;
+            }
+
             $bySeat = [];
             foreach ($roomStudents as $idx => $st) {
                 $seatNo = $st->seat_number ?: ($idx + 1);
@@ -285,9 +290,11 @@ class ExamCardController extends Controller
                         default => ($r * $cols) + $c + 1,
                     };
 
+                    $stObj = $seatNo <= $seatCount ? ($bySeat[$seatNo] ?? null) : null;
                     $rowCells[] = [
                         'seat_no' => $seatNo <= $seatCount ? $seatNo : null,
-                        'student' => $seatNo <= $seatCount ? ($bySeat[$seatNo] ?? null) : null,
+                        'student' => $stObj,
+                        'attendance_no' => $stObj ? ($attendanceNoByStudent[$stObj->id] ?? null) : null,
                     ];
                 }
                 if (collect($rowCells)->contains(fn (array $cell) => $cell['student'] !== null)) {
