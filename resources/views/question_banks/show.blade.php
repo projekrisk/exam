@@ -263,7 +263,7 @@
         </div>
         <div class="w-full sm:w-28 shrink-0">
           <label class="block text-sm font-medium mb-1">Bobot Nilai</label>
-          <input type="number" name="weight" id="q-weight" value="1" step="0.5" min="0.5" max="100" required class="w-full border border-notion-border rounded-md px-3 py-2 text-sm tnum">
+          <input type="number" name="weight" id="q-weight" value="1" step="0.5" min="0" max="100" required class="w-full border border-notion-border rounded-md px-3 py-2 text-sm tnum">
         </div>
         <div id="scoring-mode-wrap" class="hidden w-full sm:w-48 shrink-0">
           <label class="block text-sm font-medium mb-1">Mode Skor</label>

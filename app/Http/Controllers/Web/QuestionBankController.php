@@ -358,7 +358,7 @@ class QuestionBankController extends Controller
         return $request->validate([
             'type' => ['required', 'in:pg,pg_kompleks,benar_salah,uraian'],
             'question_text' => ['required', 'string'],
-            'weight' => ['required', 'numeric', 'min:0.1', 'max:100'],
+            'weight' => ['required', 'numeric', 'min:0', 'max:100'],
             'scoring_mode' => ['nullable', 'in:full,partial'],
             'media' => ['nullable', 'image', 'max:2048'],
             'pg_options' => ['nullable', 'array'],
