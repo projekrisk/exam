@@ -159,6 +159,27 @@
                     <span class="mx-1.5">•</span>
                     Kunci: <strong class="text-notion-text">{{ collect($opts)->map(fn ($o) => ($o['key'] ?? '') . ':' . (!empty($o['correct']) ? 'B' : 'S'))->implode(', ') }}</strong>
                   </p>
+                @elseif($oq->type === 'menjodohkan')
+                  @php $matches = is_array($oData['matches'] ?? null) ? $oData['matches'] : []; @endphp
+                  <div class="space-y-1 text-xs">
+                    @foreach($opts as $pair)
+                      @php
+                        $pk = (string) ($pair['key'] ?? '');
+                        $expectedRight = trim((string) ($pair['right'] ?? ''));
+                        $givenRight = trim((string) ($matches[$pk] ?? ''));
+                        $pairOk = $givenRight !== '' && $givenRight === $expectedRight;
+                      @endphp
+                      <div class="px-2.5 py-1.5 rounded border flex flex-wrap items-center justify-between gap-2 {{ $pairOk ? 'bg-emerald-50 border-emerald-200 text-emerald-900' : 'bg-red-50 border-red-200 text-red-900' }}">
+                        <span><strong>{{ $pk }}.</strong> {{ $pair['left'] ?? '' }}</span>
+                        <span>
+                          Dipilih: <strong>{{ $givenRight !== '' ? $givenRight : '-' }}</strong>
+                          @if(!$pairOk)
+                            <span class="ml-1.5 text-notion-gray">(Kunci: <strong class="text-notion-text">{{ $expectedRight }}</strong>)</span>
+                          @endif
+                        </span>
+                      </div>
+                    @endforeach
+                  </div>
                 @endif
               </div>
             @endforeach

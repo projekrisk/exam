@@ -108,6 +108,7 @@
     'pg' => 'Pilihan Ganda',
     'pg_kompleks' => 'Pilihan Ganda Kompleks',
     'benar_salah' => 'Benar / Salah',
+    'menjodohkan' => 'Menjodohkan',
     'uraian' => 'Uraian (Esai)',
   ];
   $groupedQuestions = $questionBank->questions->groupBy('type');
@@ -207,6 +208,15 @@
                   </div>
                   @endforeach
                 </div>
+              @elseif($q->type === 'menjodohkan' && is_array($q->options))
+                <div class="space-y-1.5 pt-1">
+                  @foreach($q->options as $pair)
+                  <div class="px-3 py-2 rounded-md border border-notion-border bg-white text-sm flex items-center justify-between gap-2">
+                    <span class="font-medium text-notion-text">{{ $pair['key'] ?? '' }}. {{ $pair['left'] ?? '' }}</span>
+                    <span class="px-2.5 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold shrink-0">&harr; {{ $pair['right'] ?? '' }}</span>
+                  </div>
+                  @endforeach
+                </div>
               @elseif($q->type === 'uraian')
                 @php $uMode = $q->options['mode'] ?? 'manual'; @endphp
                 <div class="p-3 rounded-md border border-notion-border bg-white text-sm space-y-1.5">
@@ -258,6 +268,7 @@
             <option value="pg">Pilihan Ganda</option>
             <option value="pg_kompleks">Pilihan Ganda Kompleks</option>
             <option value="benar_salah">Benar / Salah</option>
+            <option value="menjodohkan">Menjodohkan</option>
             <option value="uraian">Uraian (Koreksi Manual Guru)</option>
           </select>
         </div>
@@ -311,6 +322,16 @@
             <i data-lucide="x-circle" class="w-4 h-4"></i> Salah
           </button>
         </div>
+      </div>
+
+      <div id="panel-match" class="hidden space-y-3 pt-3 border-t border-notion-border">
+        <div class="flex items-center justify-between gap-2">
+          <p class="text-sm font-semibold text-notion-gray">Pasangan Item Kiri &amp; Jawaban Kanan (Untuk mode Parsial: bobot dibagi jumlah pasangan):</p>
+          <button type="button" onclick="addMatchPairRow()" class="px-2.5 py-1 bg-white border border-notion-border rounded-md text-sm font-medium text-notion-text hover:bg-notion-hover transition-colors inline-flex items-center gap-1 shrink-0">
+            <i data-lucide="plus" class="w-4 h-4"></i> Tambah Pasangan
+          </button>
+        </div>
+        <div id="match-pairs-list" class="space-y-2"></div>
       </div>
 
       <div id="panel-uraian" class="hidden space-y-3 pt-3 border-t border-notion-border">
@@ -659,6 +680,7 @@
     if (mediaInput) { mediaInput.value = ''; mediaInput._resetModernLabel?.(); }
 
     document.getElementById('pg-options-list').innerHTML = '';
+    document.getElementById('match-pairs-list').innerHTML = '';
     setBsSingleValue({});
     setModernSelectValue('q-uraian-mode', 'manual');
     document.getElementById('q-uraian-answers').value = '';
@@ -673,6 +695,7 @@
     setModernSelectValue('q-type', 'pg');
     setModernSelectValue('q-scoring-mode', 'full');
     ['A', 'B', 'C', 'D', 'E'].forEach((k, i) => addPgOptionRow({ key: k, is_correct: i === 0 }));
+    for (let i = 0; i < 3; i++) addMatchPairRow();
     setBsSingleValue({});
     switchQuestionType();
     lucide.createIcons();
@@ -709,8 +732,19 @@
       const stmts = q.options || [];
       setBsSingleValue(stmts[0] || {});
       ['A', 'B', 'C', 'D', 'E'].forEach((k, i) => addPgOptionRow({ key: k, is_correct: i === 0 }));
+      for (let i = 0; i < 3; i++) addMatchPairRow();
+    } else if (q.type === 'menjodohkan') {
+      const pairs = Array.isArray(q.options) ? q.options : [];
+      if (pairs.length > 0) {
+        pairs.forEach(p => addMatchPairRow(p));
+      } else {
+        for (let i = 0; i < 3; i++) addMatchPairRow();
+      }
+      ['A', 'B', 'C', 'D', 'E'].forEach((k, i) => addPgOptionRow({ key: k, is_correct: i === 0 }));
+      setBsSingleValue({});
     } else {
       ['A', 'B', 'C', 'D', 'E'].forEach((k, i) => addPgOptionRow({ key: k, is_correct: i === 0 }));
+      for (let i = 0; i < 3; i++) addMatchPairRow();
       setBsSingleValue({});
       const uMode = (q.options && q.options.mode) ? q.options.mode : 'manual';
       setModernSelectValue('q-uraian-mode', uMode);
@@ -741,10 +775,28 @@
     document.getElementById('uraian-manual-info')?.classList.toggle('hidden', mode !== 'manual');
   }
 
+  function addMatchPairRow(pair = {}) {
+    const list = document.getElementById('match-pairs-list');
+    if (!list) return;
+    const row = document.createElement('div');
+    row.className = 'flex items-center gap-2 p-2 border border-notion-border rounded-lg bg-notion-sidebar/30';
+    row.innerHTML = `
+      <input type="text" name="match_left[]" placeholder="Item kiri (pertanyaan)..." class="flex-1 min-w-0 border border-notion-border rounded-md px-3 py-1.5 text-sm bg-white">
+      <span class="text-notion-gray font-bold shrink-0">&harr;</span>
+      <input type="text" name="match_right[]" placeholder="Pasangan kanan (jawaban)..." class="flex-1 min-w-0 border border-notion-border rounded-md px-3 py-1.5 text-sm bg-white">
+      <button type="button" onclick="this.parentElement.remove()" class="p-1.5 text-notion-gray hover:text-notion-red rounded" title="Hapus pasangan"><i data-lucide="x" class="w-4 h-4"></i></button>
+    `;
+    row.querySelector('input[name="match_left[]"]').value = pair.left || '';
+    row.querySelector('input[name="match_right[]"]').value = pair.right || '';
+    list.appendChild(row);
+    lucide.createIcons();
+  }
+
   function switchQuestionType() {
     const type = document.getElementById('q-type').value;
     const panelPg = document.getElementById('panel-pg');
     const panelBs = document.getElementById('panel-bs');
+    const panelMatch = document.getElementById('panel-match');
     const panelUraian = document.getElementById('panel-uraian');
     const scoringWrap = document.getElementById('scoring-mode-wrap');
     const radios = document.querySelectorAll('.pg-radio');
@@ -753,6 +805,7 @@
 
     panelPg.classList.add('hidden');
     panelBs.classList.add('hidden');
+    panelMatch.classList.add('hidden');
     panelUraian.classList.add('hidden');
     scoringWrap.classList.add('hidden');
 
@@ -769,6 +822,9 @@
       pgHint.textContent = 'Isi opsi jawaban (teks dan/atau gambar) lalu centang kunci benar:';
     } else if (type === 'benar_salah') {
       panelBs.classList.remove('hidden');
+    } else if (type === 'menjodohkan') {
+      panelMatch.classList.remove('hidden');
+      scoringWrap.classList.remove('hidden');
     } else {
       panelUraian.classList.remove('hidden');
     }

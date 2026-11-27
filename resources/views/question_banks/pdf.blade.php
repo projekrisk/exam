@@ -259,6 +259,22 @@
                     <span class="tf-box"><span class="checkbox-square"></span> Benar</span>
                     <span class="tf-box"><span class="checkbox-square"></span> Salah</span>
                   </div>
+                @elseif($q->type === 'menjodohkan' && is_array($q->options))
+                  @php
+                    $rightChoices = collect($q->options)->pluck('right')->shuffle()->values();
+                  @endphp
+                  <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 6px; margin-top: 4px;">
+                    <div>
+                      @foreach($q->options as $pair)
+                        <div>{{ $pair['key'] ?? '' }}. {{ $pair['left'] ?? '' }}</div>
+                      @endforeach
+                    </div>
+                    <div>
+                      @foreach($rightChoices as $rIdx => $rText)
+                        <div>{{ chr(65 + $rIdx) }}. {{ $rText }}</div>
+                      @endforeach
+                    </div>
+                  </div>
                 @elseif($q->type === 'uraian')
                   <div class="essay-lines">
                     <div class="essay-line"></div>
@@ -293,6 +309,7 @@
                   'pg' => 'Pilihan Ganda',
                   'pg_kompleks' => 'PG Kompleks',
                   'benar_salah' => 'Benar / Salah',
+                  'menjodohkan' => 'Menjodohkan',
                   'uraian' => 'Uraian',
                   default => strtoupper((string) $q->type),
                 };
@@ -301,6 +318,8 @@
                 } elseif ($q->type === 'benar_salah') {
                   $val = $q->options['correct'] ?? null;
                   $keyText = ($val === true || $val === 'true' || $val === 1 || $val === '1') ? 'Benar' : 'Salah';
+                } elseif ($q->type === 'menjodohkan') {
+                  $keyText = collect($q->options ?? [])->map(fn ($p) => ($p['key'] ?? '') . '→' . ($p['right'] ?? ''))->implode('; ') ?: '-';
                 } elseif ($q->type === 'uraian') {
                   $keyText = trim((string) ($q->options['expected_answer'] ?? '')) ?: 'Koreksi Manual';
                 } else {

@@ -55,6 +55,25 @@ class Question extends Model
                 ])
                 ->values()
                 ->all(),
+            'menjodohkan' => (function () use ($rawOptions) {
+                $rights = collect($rawOptions)
+                    ->pluck('right')
+                    ->map(fn ($v) => trim((string) $v))
+                    ->filter(fn ($v) => $v !== '')
+                    ->values()
+                    ->shuffle()
+                    ->values()
+                    ->all();
+
+                return collect($rawOptions)
+                    ->values()
+                    ->map(fn (array $pair, int $idx) => [
+                        'key' => (string) ($pair['key'] ?? ($idx + 1)),
+                        'statement' => (string) ($pair['left'] ?? ''),
+                        'text' => $rights[$idx] ?? '',
+                    ])
+                    ->all();
+            })(),
             default => null,
         };
 

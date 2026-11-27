@@ -78,6 +78,7 @@ class ExamScoringService
             'pg' => $this->scoreSingleChoice($options, $answerData, $weight),
             'pg_kompleks' => $this->scoreMultipleChoice($options, $answerData, $weight, $question->scoring_mode),
             'benar_salah' => $this->scoreTrueFalse($options, $answerData, $weight, $question->scoring_mode),
+            'menjodohkan' => $this->scoreMatching($options, $answerData, $weight, $question->scoring_mode),
             default => 0.0,
         };
     }
@@ -171,6 +172,35 @@ class ExamScoringService
             $key = (string) ($stmt['key'] ?? '');
             $expected = (bool) ($stmt['correct'] ?? false);
             if (array_key_exists($key, $responses) && (bool) $responses[$key] === $expected) {
+                $correctCount++;
+            }
+        }
+
+        if ($correctCount === $total) {
+            return $weight;
+        }
+
+        if ($mode === 'partial' && $total > 0) {
+            return round(($correctCount / $total) * $weight, 2);
+        }
+
+        return 0.0;
+    }
+
+    private function scoreMatching(array $pairs, array $answerData, float $weight, string $mode): float
+    {
+        $responses = $answerData['matches'] ?? [];
+        if (! is_array($responses) || empty($pairs)) {
+            return 0.0;
+        }
+
+        $total = count($pairs);
+        $correctCount = 0;
+
+        foreach ($pairs as $pair) {
+            $key = (string) ($pair['key'] ?? '');
+            $expected = trim((string) ($pair['right'] ?? ''));
+            if ($key !== '' && array_key_exists($key, $responses) && trim((string) $responses[$key]) === $expected) {
                 $correctCount++;
             }
         }

@@ -209,4 +209,43 @@ class ScoreFinalizationTest extends TestCase
         $this->assertSame('=I6+J6', $sheet1->getCell('K6')->getValue());
         $this->assertSame(90, $sheet1->getCell('K6')->getCalculatedValue());
     }
+
+    public function test_menjodohkan_partial_and_full_scoring(): void
+    {
+        $scoring = app(\App\Services\ExamScoringService::class);
+        $pairs = [
+            ['key' => '1', 'left' => 'Indonesia', 'right' => 'Jakarta'],
+            ['key' => '2', 'left' => 'Jepang', 'right' => 'Tokyo'],
+            ['key' => '3', 'left' => 'Thailand', 'right' => 'Bangkok'],
+            ['key' => '4', 'left' => 'Malaysia', 'right' => 'Kuala Lumpur'],
+            ['key' => '5', 'left' => 'Vietnam', 'right' => 'Hanoi'],
+        ];
+
+        $qPartial = new \App\Models\Question([
+            'type' => 'menjodohkan',
+            'options' => $pairs,
+            'scoring_mode' => 'partial',
+            'weight' => 5,
+        ]);
+
+        // 3 benar dari 5 item pada bobot 5 => skor 3
+        $this->assertSame(3.0, $scoring->scoreObjectiveQuestion($qPartial, [
+            'matches' => ['1' => 'Jakarta', '2' => 'Tokyo', '3' => 'Bangkok', '4' => 'Hanoi', '5' => 'Kuala Lumpur'],
+        ]));
+        // 5 benar semua => skor 5
+        $this->assertSame(5.0, $scoring->scoreObjectiveQuestion($qPartial, [
+            'matches' => ['1' => 'Jakarta', '2' => 'Tokyo', '3' => 'Bangkok', '4' => 'Kuala Lumpur', '5' => 'Hanoi'],
+        ]));
+
+        // Mode full: salah 1 => 0
+        $qFull = new \App\Models\Question([
+            'type' => 'menjodohkan',
+            'options' => $pairs,
+            'scoring_mode' => 'full',
+            'weight' => 5,
+        ]);
+        $this->assertSame(0.0, $scoring->scoreObjectiveQuestion($qFull, [
+            'matches' => ['1' => 'Jakarta', '2' => 'Tokyo', '3' => 'Bangkok', '4' => 'Hanoi', '5' => 'Kuala Lumpur'],
+        ]));
+    }
 }

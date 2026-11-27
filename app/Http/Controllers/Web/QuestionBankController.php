@@ -356,7 +356,7 @@ class QuestionBankController extends Controller
     private function validateQuestionRequest(Request $request): array
     {
         return $request->validate([
-            'type' => ['required', 'in:pg,pg_kompleks,benar_salah,uraian'],
+            'type' => ['required', 'in:pg,pg_kompleks,benar_salah,menjodohkan,uraian'],
             'question_text' => ['required', 'string'],
             'weight' => ['required', 'numeric', 'min:0', 'max:100'],
             'scoring_mode' => ['nullable', 'in:full,partial'],
@@ -368,6 +368,8 @@ class QuestionBankController extends Controller
             'pgk_correct' => ['nullable', 'array'],
             'bs_statements' => ['nullable', 'array'],
             'bs_correct' => ['nullable', 'array'],
+            'match_left' => ['nullable', 'array'],
+            'match_right' => ['nullable', 'array'],
             'uraian_mode' => ['nullable', 'in:manual,auto_text'],
             'uraian_answers' => ['nullable', 'string'],
         ]);
@@ -482,6 +484,26 @@ class QuestionBankController extends Controller
                     'statement' => trim((string) ($statements[0] ?? '')),
                     'correct' => (($correctMap[0] ?? '1') === '1'),
                 ];
+            }
+
+            return $items;
+        }
+
+        if ($type === 'menjodohkan') {
+            $lefts = $request->input('match_left', []);
+            $rights = $request->input('match_right', []);
+            $items = [];
+            $num = 1;
+            foreach ($lefts as $idx => $leftVal) {
+                $l = trim((string) $leftVal);
+                $r = trim((string) ($rights[$idx] ?? ''));
+                if ($l !== '' && $r !== '') {
+                    $items[] = [
+                        'key' => (string) $num++,
+                        'left' => $l,
+                        'right' => $r,
+                    ];
+                }
             }
 
             return $items;
