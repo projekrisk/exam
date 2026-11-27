@@ -458,7 +458,7 @@
                           <span class="seat-kelas">{{ $cell['student']->kelas }}</span>
                         </div>
                         <div class="seat-urut mono">{{ str_pad((string) ($cell['attendance_no'] ?? $cell['seat_no']), 2, '0', STR_PAD_LEFT) }}</div>
-                        <div class="seat-urut-lbl">No. Urut Hadir</div>
+                        <div class="seat-urut-lbl mono">{{ $cell['student']->nis }}</div>
                       </div>
                     @else
                       <div aria-hidden="true"></div>
