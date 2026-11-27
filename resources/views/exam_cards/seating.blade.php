@@ -78,6 +78,11 @@
       box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
       page-break-after: always;
     }
+    .plan-sheet {
+      height: 297mm;
+      display: flex;
+      flex-direction: column;
+    }
     .sheet:last-child { page-break-after: auto; }
 
     .kop {
@@ -122,8 +127,11 @@
 
     .room-layout {
       border: 1.6px solid #000000;
-      padding: 3mm 3.5mm 3.5mm;
+      padding: 3.5mm 4mm 4mm;
       position: relative;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
     }
 
     .front-stage {
@@ -174,13 +182,14 @@
 
     .seat-grid {
       display: grid;
-      gap: 1.6mm;
+      gap: 2.5mm;
+      flex: 1;
     }
     .seat-cell {
-      border: 0.9px solid #000000;
+      border: 1.1px solid #000000;
       border-radius: 3px;
-      padding: 1.2mm 1.3mm;
-      min-height: 15mm;
+      padding: 2mm 1.8mm;
+      height: 100%;
       display: flex;
       flex-direction: column;
       justify-content: space-between;
@@ -196,19 +205,19 @@
       align-items: center;
       justify-content: space-between;
       gap: 1mm;
-      font-size: 6.2pt;
-      border-bottom: 0.5px solid #d1d5db;
-      padding-bottom: 0.5mm;
+      font-size: 8pt;
+      border-bottom: 0.7px solid #d1d5db;
+      padding-bottom: 0.8mm;
     }
     .seat-no { font-weight: 800; }
-    .seat-kelas { font-weight: 600; font-size: 6.2pt; }
+    .seat-kelas { font-weight: 700; font-size: 7.8pt; }
     .seat-urut {
-      font-size: 10pt;
+      font-size: 18pt;
       font-weight: 800;
-      line-height: 1.15;
-      margin: 0.8mm 0 0.4mm;
+      line-height: 1.1;
+      margin: auto 0;
     }
-    .seat-urut-lbl { font-size: 6pt; color: #4b5563; }
+    .seat-urut-lbl { font-size: 7pt; color: #4b5563; font-weight: 600; }
 
     /* Kotak Nama Bangku (Gunting & Tempel) — muat 1 halaman */
     .label-sheet-header {
@@ -285,6 +294,7 @@
       .no-print { display: none !important; }
       .pages-wrap { padding: 0; gap: 0; }
       .sheet { width: 100%; min-height: auto; padding: 0; box-shadow: none; }
+      .plan-sheet { height: 280mm; min-height: 280mm; }
     }
   </style>
 </head>
@@ -379,7 +389,7 @@
     <div class="pages-wrap">
       @foreach($roomPlans as $plan)
         @if($viewMode !== 'labels')
-          <section class="sheet">
+          <section class="sheet plan-sheet">
             <header class="kop">
               @if(!empty($settings['school_logo_path']))
                 <img src="{{ asset('uploads/soal/' . $settings['school_logo_path']) }}" alt="Logo" class="kop-logo">
@@ -438,7 +448,7 @@
                 </div>
               </div>
 
-              <div class="seat-grid" style="grid-template-columns: repeat({{ $plan['cols'] ?? $cols }}, minmax(0, 1fr));">
+              <div class="seat-grid" style="grid-template-columns: repeat({{ $plan['cols'] ?? $cols }}, minmax(0, 1fr)); grid-template-rows: repeat({{ max(1, count($plan['grid'])) }}, minmax(0, 1fr));">
                 @foreach($plan['grid'] as $rowCells)
                   @foreach($rowCells as $cell)
                     @if($cell['student'])
